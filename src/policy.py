@@ -179,15 +179,13 @@ class Policy(object):
             advantages: advantages, shape = (N,)
             logger: Logger object, see utils.py
         """
-        print('Advantages')
-        print(self.advantages_ph)
         feed_dict = {self.obs_ph: observes,
                      self.act_ph: actions,
                      self.advantages_ph: advantages,
                      self.beta_ph: self.beta,
                      self.eta_ph: self.eta,
                      self.lr_ph: self.lr * self.lr_multiplier}
-        print(feed_dict)
+        #print(feed_dict)
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
