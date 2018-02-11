@@ -147,6 +147,12 @@ class Policy(object):
         """
         loss1 = -tf.reduce_mean(self.advantages_ph *
                                 tf.exp(self.logp - self.logp_old))
+        print('log new policy')
+        print(self.logp)
+        print('log old policy')
+        print(self.logp_old)
+        print('Advantages')
+        print(self.advantages_ph)
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
