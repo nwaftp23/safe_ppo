@@ -109,6 +109,10 @@ class Policy(object):
         logp_old += -0.5 * tf.reduce_sum(tf.square(self.act_ph - self.old_means_ph) /
                                          tf.exp(self.old_log_vars_ph), axis=1)
         self.logp_old = logp_old
+        print('log new policy')
+        print(self.logp)
+        print('log old policy')
+        print(self.logp_old)
 
     def _kl_entropy(self):
         """
@@ -147,17 +151,11 @@ class Policy(object):
         """
         loss1 = -tf.reduce_mean(self.advantages_ph *
                                 tf.exp(self.logp - self.logp_old))
-        print('log new policy')
-        print(self.logp)
-        print('log old policy')
-        print(self.logp_old)
-        print('Advantages')
-        print(self.advantages_ph)
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
         loss4 = 2
-        self.loss = loss1 + loss2 + loss3
+        self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
 
@@ -181,10 +179,6 @@ class Policy(object):
             advantages: advantages, shape = (N,)
             logger: Logger object, see utils.py
         """
-        print('log new policy')
-        print(self.logp)
-        print('log old policy')
-        print(self.logp_old)
         print('Advantages')
         print(self.advantages_ph)
         feed_dict = {self.obs_ph: observes,
