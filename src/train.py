@@ -64,8 +64,7 @@ def init_gym(env_name):
     """
     env = gym.make(env_name)
     obs_dim = env.observation_space.shape[0]
-    act_dim = env.action_space#.shape[0]
-    print(act_dim)
+    act_dim = env.action_space.shape[0]
     return env, obs_dim, act_dim
 
 
@@ -133,17 +132,15 @@ def run_policy(env, policy, scaler, logger, episodes):
     trajectories = []
     for e in range(episodes):
         observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler)
-        print('Observes')
-        print(observes)
-        print('actions')
-        print(actions)
-        input('check')
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
                       'rewards': rewards,
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
+    print('trajectories Dictionary after', episodes, 'episodes')
+    print(trajectories)
+    input('-------------')
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
     scaler.update(unscaled)  # update running statistics for scaling observations
     logger.log({'_MeanReward': np.mean([t['rewards'].sum() for t in trajectories]),
