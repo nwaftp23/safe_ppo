@@ -63,6 +63,7 @@ def init_gym(env_name):
         number of action dimensions (int)
     """
     env = gym.make(env_name)
+    print(env)
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
 
