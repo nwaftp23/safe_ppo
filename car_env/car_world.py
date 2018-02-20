@@ -4,6 +4,7 @@ from car_agent import Car
 pygame.init()
 
 GREEN = (20, 255, 140)
+DARK_GREEN = (0,100,0)
 GREY = (210, 210 ,210)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
@@ -13,7 +14,7 @@ CYAN = (0, 255, 255)
 BLUE = (100, 100, 255)
 
 speed = 1
-colorList = (RED, GREEN, PURPLE, YELLOW, CYAN, BLU)
+colorList = (RED, GREEN, PURPLE, YELLOW, CYAN, BLUE, DARK_GREEN)
 
 
 SCREENWIDTH=800
@@ -27,7 +28,7 @@ pygame.display.set_caption("Car Racing")
 all_sprites_list = pygame.sprite.Group()
 
 
-playerCar = Car(Green, 60, 80, 70)
+playerCar = Car(DARK_GREEN, 60, 80, 70)
 playerCar.rect.x = 160
 playerCar.rect.y = SCREENHEIGHT - 100
 
@@ -102,7 +103,7 @@ while carryOn:
         #Drawing on Screen
         screen.fill(GREEN)
         #Draw The Road
-        pygame.draw.rect(screen, GREY, [40,0, 400,SCREENHEIGHT])
+        pygame.draw.rect(screen, GREY, [40,0, 600,SCREENHEIGHT])
         #Draw Line painting on the road
         pygame.draw.line(screen, WHITE, [140,0],[140,SCREENHEIGHT],5)
         #Draw Line painting on the road
