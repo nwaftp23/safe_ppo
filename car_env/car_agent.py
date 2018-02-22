@@ -4,7 +4,7 @@ WHITE = (255, 255, 255)
 class Car(pygame.sprite.Sprite):
     #This class represents a car. It derives from the "Sprite" class in Pygame.
 
-    def __init__(self, color, width, height, speed):
+    def __init__(self, color, width, height, max_speed, max_acceleration):
         # Call the parent class (Sprite) constructor
         super().__init__()
 
@@ -15,10 +15,12 @@ class Car(pygame.sprite.Sprite):
         self.image.set_colorkey(WHITE)
 
         #Initialise attributes of the car.
-        self.width=width
-        self.height=height
+        self.width = width
+        self.height = height
         self.color = color
-        self.speed = speed
+        self.max_speed = max_speed
+        self.max_acceleration = max_acceleration
+        self.speed = 0
 
         # Draw the car (a rectangle!)
         pygame.draw.rect(self.image, self.color, [0, 0, self.width, self.height])
@@ -29,17 +31,18 @@ class Car(pygame.sprite.Sprite):
         # Fetch the rectangle object that has the dimensions of the image.
         self.rect = self.image.get_rect()
 
-    def moveRight(self, pixels):
-        self.rect.x += pixels
+    def move_car(self):
+        if abs(self.speed) < self.max_speed:
+            self.rect.y += self.speed
+        else:
+            self.rect.y += self.max_speed
 
-    def moveLeft(self, pixels):
-        self.rect.x -= pixels
-
-    def moveForward(self, speed):
-        self.rect.y += self.speed * speed / 20
-
-    def moveBackward(self, speed):
-        self.rect.y -= self.speed * speed / 20
+    def accelerate(self, speed):
+        if speed < self.max_acceleration:
+            self.speed += speed
+        else:
+            self.speed += self.max_acceleration
+        self.move_car()
 
     def changeSpeed(self, speed):
         self.speed = speed
