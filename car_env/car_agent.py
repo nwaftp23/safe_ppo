@@ -1,10 +1,11 @@
 import pygame
+import numpy as np
 WHITE = (255, 255, 255)
 
 class Car(pygame.sprite.Sprite):
     #This class represents a car. It derives from the "Sprite" class in Pygame.
 
-    def __init__(self, color, width, height, max_speed, max_acceleration):
+    def __init__(self, color, width, height, max_speed):
         # Call the parent class (Sprite) constructor
         super().__init__()
 
@@ -19,7 +20,6 @@ class Car(pygame.sprite.Sprite):
         self.height = height
         self.color = color
         self.max_speed = max_speed
-        self.max_acceleration = max_acceleration
         self.speed = 0
 
         # Draw the car (a rectangle!)
@@ -31,18 +31,9 @@ class Car(pygame.sprite.Sprite):
         # Fetch the rectangle object that has the dimensions of the image.
         self.rect = self.image.get_rect()
 
-    def move_car(self):
-        if abs(self.speed) < self.max_speed:
-            self.rect.y += self.speed
-        else:
-            self.rect.y += self.max_speed
-
-    def accelerate(self, speed):
-        if speed < self.max_acceleration:
-            self.speed += speed
-        else:
-            self.speed += self.max_acceleration
-        self.move_car()
+    def accelerate(self, speed, players_speed):
+        self.speed =np.clip(self.speed-speed, -self.max_speed, self.max_speed)
+        self.rect.y += (self.speed+players_speed)
 
     def changeSpeed(self, speed):
         self.speed = speed
