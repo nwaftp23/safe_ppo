@@ -1,8 +1,15 @@
+import math
+import gym
+from gym import spaces, logger
+from gym.utils import seeding
+import numpy as np
 import pygame, random
 #Let's import the Car Class
 from car_agent import *
 
-class Safe_Stop(object):
+class Optimal_Stop(gym.Env):
+
+
     def __init__(self):
         self.GREEN = (20, 255, 140)
         self.BLUE = (0,0,255)
@@ -15,10 +22,40 @@ class Safe_Stop(object):
         self.size = (self.SCREENWIDTH, self.SCREENHEIGHT)
         self.speed = 0
         self.screen = 0
+        self.start_x_agent = 80
+        self.start_y_agent = self.SCREENHEIGHT - 100
+        self.start_x_driver = 80
+        self.start_y_driver = 100
         self.all_coming_cars = []
         self.all_sprites_list = []
         self.playerCar = 0
+        self.max_position = 10**5
+        self.min_position = -10**5
+        self.max_distance = 10**12
+        self.min_distance = 0
         self.max_speed = 20
+        self.min_speed = -20
+        self.max_acceleration = 5
+        self.min_acceleration = -3
+        self.goal_position = 5*10**4
+        self.low = np.array([self.min_position,self.min_distance, self.min_speed])
+        self.high = np.array([self.max_position,self.max_distance, self.max_speed])
+        self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
+        self.observation_space = spaces.Box(low=self.low, high=self.high)
+        self.seed()
+        self.reset()
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def step(self, action):
+        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        position, distance, speed = self.state
+        speed += action
+        speed = np.clip(speed, self.min_speed, self.max_speed)
+        position += speed
+        position = np.clip(position)
 
     # makes the car sprites
     def make_sprites(self):
@@ -26,32 +63,19 @@ class Safe_Stop(object):
         self.screen = pygame.display.set_mode(self.size)
         pygame.display.set_caption("Safe Stopping")
         self.playerCar = Car(self.BLUE, 60, 80, 10)
-        self.playerCar.rect.x = 80
-        self.playerCar.rect.y = self.SCREENHEIGHT - 100
+        self.playerCar.rect.x = self.start_x_agent
+        self.playerCar.rect.y = self.start_y_agent
         car1 = Car(self.RED, 60, 80, 20)
-        car1.rect.x = 80
-        car1.rect.y = 100
+        car1.rect.x = self.start_x_driver
+        car1.rect.y = self.start_y_driver
         self.all_sprites_list = pygame.sprite.Group()
         self.all_sprites_list.add(self.playerCar)
         self.all_sprites_list.add(car1)
         self.all_coming_cars = pygame.sprite.Group()
         self.all_coming_cars.add(car1)
-    # Makes and saves background
-    # then I can use blit to scroll
-    # Only use this function to make a new make background
-    # Or to add a background to the directory
-    def make_background(self,filename):
-        pygame.init()
-        self.screen = pygame.display.set_mode((220,1040))
-        self.screen.fill(self.GREEN)
-        #Draw The Road
-        pygame.draw.rect(self.screen, self.GREY, [60,0, 100,1040])
-        pygame.draw.rect(self.screen, self.DARK_GREEN, [15,40, 30,40])
-        pygame.draw.rect(self.screen, self.DARK_GREEN, [175,520, 30,40])
-        pygame.image.save(self.screen, filename)
     # simulate an episode of optimal stopping
     # stop_prob the probability of random stop
-    def rollout(self,random_stop_prob):
+    def viewer(self,random_stop_prob):
         self.make_sprites()
         background = pygame.image.load('background2.jpeg')
         w , h = background.get_size()
