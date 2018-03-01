@@ -20,7 +20,7 @@ class Car(pygame.sprite.Sprite):
         self.height = height
         self.color = color
         self.max_speed = max_speed
-        self.speed = 0
+        self.speed = 15
 
         # Draw the car (a rectangle!)
         pygame.draw.rect(self.image, self.color, [0, 0, self.width, self.height])
@@ -32,8 +32,8 @@ class Car(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def accelerate(self, speed, players_speed):
-        self.speed =np.clip(self.speed-speed, -self.max_speed, self.max_speed)
-        self.rect.y += (self.speed+players_speed)
+        self.rect.y += (-speed+players_speed)
+        print('y postion of agent', self.rect.y+80)
 
     def changeSpeed(self, speed):
         self.speed = speed
