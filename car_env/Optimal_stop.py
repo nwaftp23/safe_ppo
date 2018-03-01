@@ -11,39 +11,28 @@ class Optimal_Stop(gym.Env):
 
 
     def __init__(self):
-        self.GREEN = (20, 255, 140)
-        self.BLUE = (0,0,255)
-        self.DARK_GREEN = (0,100,0)
-        self.GREY = (210, 210 ,210)
-        self.WHITE = (255, 255, 255)
-        self.RED = (255, 0, 0)
-        self.SCREENWIDTH=220
-        self.SCREENHEIGHT=600
-        self.size = (self.SCREENWIDTH, self.SCREENHEIGHT)
-        self.speed = 0
-        self.screen = 0
-        self.start_x_agent = 80
-        self.start_y_agent = self.SCREENHEIGHT - 100
-        self.start_x_driver = 80
-        self.start_y_driver = 100
-        self.all_coming_cars = []
-        self.all_sprites_list = []
-        self.playerCar = 0
-        self.max_position = 10**5
-        self.min_position = -10**5
+        self.max_position = 10**4
+        self.min_position = -10**2
         self.max_distance = 10**12
         self.min_distance = 0
         self.max_speed = 20
         self.min_speed = -20
         self.max_acceleration = 5
         self.min_acceleration = -3
-        self.goal_position = 5*10**4
+        self.goal_position = 5*10**2
         self.low = np.array([self.min_position,self.min_distance, self.min_speed])
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
         self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
         self.observation_space = spaces.Box(low=self.low, high=self.high)
+        self.stop_prob = 0.05
+        self.random_stop = bool(np.random.uniform() < self.stop_prob)
+        if self.random_stop:
+            self.stop_position = np.random.uniform(100,4*10**3)
+        self.driver_speed = 15
+        self.driver_position = 100
         self.seed()
         self.reset()
+        self.rand_stop()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -56,6 +45,35 @@ class Optimal_Stop(gym.Env):
         speed = np.clip(speed, self.min_speed, self.max_speed)
         position += speed
         position = np.clip(position)
+        if (position==self.min_position and speed<0): speed = 0
+        done = bool(position >= self.goal_position)
+        reward = -1.0
+        self.driver_speed += np.random.normal(0,0.05)
+        self.driver_position += self.driver_speed
+        distance = position - (self.driver_position-80)
+        crash = bool(distance <= 0)
+        if crash:
+            print('Car Crash!')
+            reward = -5000
+            done = True
+        if reward == -10*3:
+            done = True
+        self.state = (position, distance, speed)
+        return np.array(self.state), reward, done, driver_speed, {}
+
+    def reset(self):
+        self.state = np.array([420, 240, 15])
+        self.driver_speed = 15
+        self.driver_position = 180
+        #Reset Sprites and speed before next rollout
+        self.all_coming_cars = []
+        self.all_sprites_list = []
+        return np.array(self.state)
+
+    def rand_stop(self):
+        if self.random_stop:
+            if self.driver_position > self.stop_position:
+                self.driver_position = self.stop_position
 
     # makes the car sprites
     def make_sprites(self):
@@ -75,54 +93,62 @@ class Optimal_Stop(gym.Env):
         self.all_coming_cars.add(car1)
     # simulate an episode of optimal stopping
     # stop_prob the probability of random stop
-    def viewer(self,random_stop_prob):
+    def open_pygame(self):
+        GREEN = (20, 255, 140)
+        BLUE = (0,0,255)
+        DARK_GREEN = (0,100,0)
+        GREY = (210, 210 ,210)
+        WHITE = (255, 255, 255)
+        RED = (255, 0, 0)
+        SCREENWIDTH=220
+        SCREENHEIGHT=600
+        size = (SCREENWIDTH, SCREENHEIGHT)
+        self.start_x_agent = 80
+        self.start_y_agent = SCREENHEIGHT - 180
+        self.start_x_driver = 80
+        self.start_y_driver = 100
         self.make_sprites()
         background = pygame.image.load('background2.jpeg')
         w , h = background.get_size()
-        carryOn = True
         clock=pygame.time.Clock()
-        self.screen = pygame.display.set_mode(self.size)
+        screen = pygame.display.set_mode(self.size)
+        return h
+
+    def render(self, agent_speed, driver_speed):
+        h = self.open_pygame()
         y0 = 0
         y1 = 0
-        while carryOn:
-            for event in pygame.event.get():
-                if event.type==pygame.QUIT:
-                    carryOn=False
-            # Scroll the background to make it seem
-            # as if the blue car is moving
-            self.speed = np.clip(self.speed+random.randint(0,2), -self.max_speed, self.max_speed)
-            y1 = (y1 + self.speed) % h
-            self.screen.blit(background,(0,-(h-y1)))
-            self.screen.blit(background,(0,y1))
-            # Move the red car
-            for car in self.all_coming_cars:
-                s = random.randint(0,5)
-                car.accelerate(s, self.speed)
-
-            # Check for collisions
-            car_collision_list = pygame.sprite.spritecollide(self.playerCar,self.all_coming_cars,False)
-            for car in car_collision_list:
-                print("Car crash!")
-                #End Of Game
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:
                 carryOn=False
-            self.all_sprites_list.update()
+        # Scroll the background to make it seem
+        # as if the blue car is moving
+        self.speed = agent_speed
+        y1 = (y1 + self.speed) % h
+        self.screen.blit(background,(0,-(h-y1)))
+        self.screen.blit(background,(0,y1))
+        # Move the red car
+        for car in self.all_coming_cars:
+            car.accelerate(driver_speed, self.speed)
 
-            #Draw Line painting on the road
-            #pygame.draw.line(self.screen, self.WHITE, [140,0],[140,self.SCREENHEIGHT],5)
+        # Check for collisions
+        car_collision_list = pygame.sprite.spritecollide(self.playerCar,self.all_coming_cars,False)
+        for car in car_collision_list:
+            print("Car crash!")
+            #End Of Game
+            carryOn=False
+        self.all_sprites_list.update()
+
+        #Draw Line painting on the road
+        #pygame.draw.line(self.screen, self.WHITE, [140,0],[140,self.SCREENHEIGHT],5)
 
 
-            #Now let's draw all the sprites in one go. (For now we only have 1 sprite!)
-            self.all_sprites_list.draw(self.screen)
+        #Now let's draw all the sprites in one go. (For now we only have 1 sprite!)
+        self.all_sprites_list.draw(screen)
 
-            #Refresh Screen
-            pygame.display.flip()
-            #Number of frames per secong e.g. 60
-            clock.tick(60)
-            y0 = y1
-            #self.screen.blit()
-        #Reset Sprites and speed before next rollout
-        self.all_coming_cars = []
-        self.all_sprites_list = []
-        self.playerCar = 0
-        self.speed = 0
+        #Refresh Screen
+        pygame.display.flip()
+        #Number of frames per secong e.g. 60
+        clock.tick(60)
+        y0 = y1
         pygame.quit()
