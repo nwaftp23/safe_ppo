@@ -16,21 +16,24 @@ class Optimal_Stop(gym.Env):
         self.max_distance = 10**12
         self.min_distance = 0
         self.max_speed = 20
-        self.min_speed = -20
+        self.min_speed = 0
         self.max_acceleration = 5
         self.min_acceleration = -3
-        self.goal_position = 5*10**2
+        self.goal_position = 5*10**3
         self.low = np.array([self.min_position,self.min_distance, self.min_speed])
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
         self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
         self.observation_space = spaces.Box(low=self.low, high=self.high)
-        self.stop_prob = 0.05
+        self.stop_prob = 0.75
         self.random_stop = bool(np.random.uniform() < self.stop_prob)
         if self.random_stop:
             self.stop_position = np.random.uniform(100,4*10**3)
+        else:
+            self.stop_position = 3*self.goal_position
         self.seed()
         self.reset()
-        self.rand_stop()
+        self.stuck_time = 100
+        self.stop_ticker = 0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -38,6 +41,8 @@ class Optimal_Stop(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        print('Is there an accident',self.random_stop)
+        print('The accident occured at', self.stop_position)
         position, distance, speed = self.state
         speed += action
         speed = np.clip(speed, self.min_speed, self.max_speed)
@@ -46,15 +51,15 @@ class Optimal_Stop(gym.Env):
         if (position==self.min_position and speed<0): speed = 0
         done = bool(position >= self.goal_position)
         reward = -1.0
-        self.driver_speed += np.random.normal(0,0.05)
+        self.rand_stop()
         self.driver_position += self.driver_speed
+        print('the driver position is', self.driver_position)
+        print('the agent position is', position)
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
         if crash:
             print('Car Crash! from step')
             reward = -5000
-            done = True
-        if reward == -10*3:
             done = True
         self.state = (position, distance, speed)
         return np.array(self.state), reward, done, {}
@@ -70,9 +75,14 @@ class Optimal_Stop(gym.Env):
         return np.array(self.state)
 
     def rand_stop(self):
-        if self.random_stop:
-            if self.driver_position > self.stop_position:
-                self.driver_position = self.stop_position
+        if self.driver_position > self.stop_position and self.stop_ticker < 101:
+            self.driver_speed = 0
+            self.stop_ticker += 1
+        elif 101 <= self.stop_ticker< 104 :
+            self.driver_speed = 5
+            self.stop_ticker += 1
+        else:
+            self.driver_speed += np.random.normal(0,0.05)
 
     # makes the car sprites
     def make_sprites(self):
@@ -114,9 +124,6 @@ class Optimal_Stop(gym.Env):
         self.y1 = 0
 
     def render(self):
-        for event in pygame.event.get():
-            if event.type==pygame.QUIT:
-                carryOn=False
         # Scroll the background to make it seem
         # as if the blue car is moving
         self.y1 = (self.y1 + self.state[2]) % self.h

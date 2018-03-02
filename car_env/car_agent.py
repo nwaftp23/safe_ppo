@@ -33,7 +33,6 @@ class Car(pygame.sprite.Sprite):
 
     def accelerate(self, speed, players_speed):
         self.rect.y += (-speed+players_speed)
-        print('y postion of agent', self.rect.y+80)
 
     def changeSpeed(self, speed):
         self.speed = speed
