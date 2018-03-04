@@ -82,8 +82,6 @@ class Optimal_Stop(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
-        print('Is there an accident',self.random_stop)
-        print('The accident occured at', self.stop_position)
         position, distance, speed = self.state
         speed += action
         speed = np.clip(speed, self.min_speed, self.max_speed)
@@ -94,8 +92,6 @@ class Optimal_Stop(gym.Env):
         reward = -1.0
         self.rand_stop()
         self.driver_position += self.driver_speed
-        print('the driver position is', self.driver_position)
-        print('the agent position is', position)
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
         if crash:
@@ -171,8 +167,6 @@ class Optimal_Stop(gym.Env):
         self.screen.blit(self.background,(0,-(self.h-self.y1)))
         self.screen.blit(self.background,(0,self.y1))
         # Move the red car
-        # print('current agent speed is', self.state[2])
-        # print('current driver speed is', self.driver_speed)
         for car in self.all_coming_cars:
             car.accelerate(self.driver_speed, self.state[2])
 
