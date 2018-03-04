@@ -1,9 +1,8 @@
-import math
 import gym
 from gym import spaces, logger
 from gym.utils import seeding
 import numpy as np
-import pygame, random
+import pygame
 #Let's import the Car Class
 from car_agent import *
 
