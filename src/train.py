@@ -138,9 +138,6 @@ def run_policy(env, policy, scaler, logger, episodes):
                       'rewards': rewards,
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
-    print('trajectories Dictionary after', episodes, 'episodes')
-    print(trajectories)
-    input('-------------')
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
     scaler.update(unscaled)  # update running statistics for scaling observations
     logger.log({'_MeanReward': np.mean([t['rewards'].sum() for t in trajectories]),
@@ -215,6 +212,27 @@ def add_gae(trajectories, gamma, lam):
         tds = rewards - values + np.append(values[1:] * gamma, 0)
         advantages = discount(tds, gamma * lam)
         trajectory['advantages'] = advantages
+
+def VaR(rewards,threshold):
+    """ Calculates the VaR of the discounted sum of returns.
+    Takes as inputs discounted sum of rewards and alpha."""
+    costs = -1*np.array(rewards)
+    Value_at_Risk = np.percentile(rewards,threshold)
+    return Value_at_Risk
+
+def CVaR(rewards,threshold):
+    """ Calculates the CVaR of the discounted sum of returns.
+    Takes as inputs discounted sum of rewards and alpha."""
+    Value_at_Risk = VaR(rewards)
+    tail_values = -1*np.array(list(filter(lambda a: a >= Value_at_Risk, e)))
+    Conditional_Value_at_Risk = np.mean(tail_values)
+    return Conditional_Value_at_Risk
+
+def EVaR(rewards, threshold):
+    """ Calculates the EVaR of the discounted sum of returns.
+    Takes as inputs discounted sum of rewards and alpha.
+    ---- TODO-------
+    Idea incorporate the natural gradient look at paper"""
 
 
 def build_train_set(trajectories):
@@ -299,6 +317,8 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_gae(trajectories, gamma, lam)  # calculate advantage
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+        print('disc_sum_rew', disc_sum_rew)
+        print('trajectories',trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
         policy.update(observes, actions, advantages, logger)  # update policy
