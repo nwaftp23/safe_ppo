@@ -49,6 +49,7 @@ class Policy(object):
         self.obs_ph = tf.placeholder(tf.float32, (None, self.obs_dim), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
+        self.discounted_sum_rewards = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
@@ -109,10 +110,6 @@ class Policy(object):
         logp_old += -0.5 * tf.reduce_sum(tf.square(self.act_ph - self.old_means_ph) /
                                          tf.exp(self.old_log_vars_ph), axis=1)
         self.logp_old = logp_old
-        print('log new policy')
-        print(self.logp)
-        print('log old policy')
-        print(self.logp_old)
 
     def _kl_entropy(self):
         """
@@ -154,7 +151,7 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
-        loss4 = 2
+        loss4 = tf.contrib.distributions.percentile(self.discounted_sum_rewards,95)
         self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)

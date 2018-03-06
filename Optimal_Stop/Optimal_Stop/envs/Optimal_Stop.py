@@ -50,7 +50,6 @@ class Car(pygame.sprite.Sprite):
 
 class Optimal_Stop(gym.Env):
 
-
     def __init__(self):
         self.max_position = 10**4
         self.min_position = -10**2
@@ -102,6 +101,7 @@ class Optimal_Stop(gym.Env):
         return np.array(self.state), reward, done, {}
 
     def reset(self):
+        "state = position, distance, speed"
         self.state = np.array([180, 240, 15])
         self.driver_speed = 15
         self.driver_position = 420
