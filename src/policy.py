@@ -9,7 +9,7 @@ import tensorflow as tf
 
 class Policy(object):
     """ NN-based policy approximation """
-    def __init__(self, obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar):
+    def __init__(self, obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ):
         """
         Args:
             obs_dim: num observation dimensions (int)
@@ -20,7 +20,9 @@ class Policy(object):
         """
         self.beta = 1.0  # dynamically adjusted D_KL loss multiplier
         self.eta = 50  # multiplier for D_KL-kl_targ hinge-squared loss
+        self.lamb = 1.0 # multiplier for risk penalty
         self.kl_targ = kl_targ
+        self.risk_targ = risk_targ
         self.hid1_mult = hid1_mult
         self.policy_logvar = policy_logvar
         self.epochs = 20
@@ -53,6 +55,7 @@ class Policy(object):
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
+        self.lamb_ph = tf.placeholder(tf.float32, (), 'eta')
         # learning rate:
         self.lr_ph = tf.placeholder(tf.float32, (), 'eta')
         # log_vars and means with pi_old (previous step's policy parameters):
@@ -151,7 +154,8 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
-        loss4 = tf.contrib.distributions.percentile(self.discounted_sum_rewards,95)
+        # VaR alpha =.95
+        loss4 = self.lamb_ph*tf.contrib.distributions.percentile(self.discounted_sum_rewards,95)
         self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
@@ -167,7 +171,7 @@ class Policy(object):
 
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
-    def update(self, observes, actions, advantages, logger):
+    def update(self, observes, actions, advantages, disc_sum_rew, logger):
         """ Update policy based on observations, actions and advantages
 
         Args:
@@ -181,7 +185,9 @@ class Policy(object):
                      self.advantages_ph: advantages,
                      self.beta_ph: self.beta,
                      self.eta_ph: self.eta,
-                     self.lr_ph: self.lr * self.lr_multiplier}
+                     self.lamb_ph: self.lamb,
+                     self.lr_ph: self.lr * self.lr_multiplier,
+                     self.discounted_sum_rewards: disc_sum_rew}
         #print(feed_dict)
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
@@ -194,7 +200,10 @@ class Policy(object):
             loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
+
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
+        print('kl is', kl)
+        risk_metric =
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
             self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
             if self.beta > 30 and self.lr_multiplier > 0.1:
@@ -203,6 +212,10 @@ class Policy(object):
             self.beta = np.maximum(1 / 35, self.beta / 1.5)  # min clip beta
             if self.beta < (1 / 30) and self.lr_multiplier < 10:
                 self.lr_multiplier *= 1.5
+        if risk_metric > self.risk_targ * 1.5:
+            self.lamb *= 2
+        elif risk_metric < self.risk_targ / 1.5:
+            self.lamb = self.lamb /= 2
 
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,

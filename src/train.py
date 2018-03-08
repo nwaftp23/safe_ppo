@@ -168,6 +168,7 @@ def add_disc_sum_rew(trajectories, gamma):
             rewards = trajectory['rewards']
         disc_sum_rew = discount(rewards, gamma)
         trajectory['disc_sum_rew'] = disc_sum_rew
+        print(trajectory['disc_sum_rew'])
 
 
 def add_value(trajectories, val_func):
@@ -213,17 +214,17 @@ def add_gae(trajectories, gamma, lam):
         advantages = discount(tds, gamma * lam)
         trajectory['advantages'] = advantages
 
-def VaR(rewards,threshold):
+def VaR(disc_sum_rewards,threshold):
     """ Calculates the VaR of the discounted sum of returns.
     Takes as inputs discounted sum of rewards and alpha."""
-    costs = -1*np.array(rewards)
+    costs = -1*np.array(discounted_sum_rewards)
     Value_at_Risk = np.percentile(rewards,threshold)
     return Value_at_Risk
 
-def CVaR(rewards,threshold):
+def CVaR(disc_sum_rewards,threshold):
     """ Calculates the CVaR of the discounted sum of returns.
     Takes as inputs discounted sum of rewards and alpha."""
-    Value_at_Risk = VaR(rewards)
+    Value_at_Risk = VaR(disc_sum_rewards)
     tail_values = -1*np.array(list(filter(lambda a: a >= Value_at_Risk, e)))
     Conditional_Value_at_Risk = np.mean(tail_values)
     return Conditional_Value_at_Risk
@@ -318,10 +319,9 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         print('disc_sum_rew', disc_sum_rew)
-        print('trajectories',trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, logger)  # update policy
+        policy.update(observes, actions, advantages, disc_sum_rew, logger)  # update policy
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         if killer.kill_now:
