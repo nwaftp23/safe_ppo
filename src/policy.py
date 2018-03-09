@@ -9,7 +9,7 @@ import tensorflow as tf
 
 class Policy(object):
     """ NN-based policy approximation """
-    def __init__(self, obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ):
+    def __init__(self, obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ, risk_option, batch_size, alpha):
         """
         Args:
             obs_dim: num observation dimensions (int)
@@ -21,8 +21,10 @@ class Policy(object):
         self.beta = 1.0  # dynamically adjusted D_KL loss multiplier
         self.eta = 50  # multiplier for D_KL-kl_targ hinge-squared loss
         self.lamb = 1.0 # multiplier for risk penalty
+        self.alpha = alpha # size of tail
         self.kl_targ = kl_targ
         self.risk_targ = risk_targ
+        self.risk_option = risk_option
         self.hid1_mult = hid1_mult
         self.policy_logvar = policy_logvar
         self.epochs = 20
@@ -41,6 +43,7 @@ class Policy(object):
             self._policy_nn()
             self._logprob()
             self._kl_entropy()
+            self._risk_metric()
             self._sample()
             self._loss_train_op()
             self.init = tf.global_variables_initializer()
@@ -51,7 +54,7 @@ class Policy(object):
         self.obs_ph = tf.placeholder(tf.float32, (None, self.obs_dim), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
-        self.discounted_sum_rewards = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
+        self.disc_sum_rew = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
@@ -114,6 +117,16 @@ class Policy(object):
                                          tf.exp(self.old_log_vars_ph), axis=1)
         self.logp_old = logp_old
 
+    def _risk_metric(self):
+        if self.risk_option == 'VaR':
+            self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew,alpha)
+        elif self.risk_option == 'CVaR':
+            cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
+            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew,cutoff))
+        elif self.risk_option == 'EVaR':
+            #TODO add EVaR to the model
+
+
     def _kl_entropy(self):
         """
         Add to Graph:
@@ -154,8 +167,7 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
-        # VaR alpha =.95
-        loss4 = self.lamb_ph*tf.contrib.distributions.percentile(self.discounted_sum_rewards,95)
+        loss4 = self.lamb_ph*self.risk
         self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
@@ -187,7 +199,7 @@ class Policy(object):
                      self.eta_ph: self.eta,
                      self.lamb_ph: self.lamb,
                      self.lr_ph: self.lr * self.lr_multiplier,
-                     self.discounted_sum_rewards: disc_sum_rew}
+                     self.disc_sum_rew0: disc_sum_rew}
         #print(feed_dict)
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
@@ -197,13 +209,12 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
+            loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
 
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         print('kl is', kl)
-        risk_metric =
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
             self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
             if self.beta > 30 and self.lr_multiplier > 0.1:
@@ -220,6 +231,7 @@ class Policy(object):
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
                     'KL': kl,
+                    risk_option: risk_metric,
                     'Beta': self.beta,
                     '_lr_multiplier': self.lr_multiplier})
 

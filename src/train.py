@@ -107,6 +107,7 @@ def run_episode(env, policy, scaler, animate=False):
         rewards.append(reward)
         step += 1e-3  # increment time step feature
 
+    print(rewards)
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
@@ -168,7 +169,6 @@ def add_disc_sum_rew(trajectories, gamma):
             rewards = trajectory['rewards']
         disc_sum_rew = discount(rewards, gamma)
         trajectory['disc_sum_rew'] = disc_sum_rew
-        print(trajectory['disc_sum_rew'])
 
 
 def add_value(trajectories, val_func):
@@ -232,7 +232,7 @@ def CVaR(disc_sum_rewards,threshold):
 def EVaR(rewards, threshold):
     """ Calculates the EVaR of the discounted sum of returns.
     Takes as inputs discounted sum of rewards and alpha.
-    ---- TODO-------
+    ----TODO-------
     Idea incorporate the natural gradient look at paper"""
 
 
@@ -255,8 +255,9 @@ def build_train_set(trajectories):
     advantages = np.concatenate([t['advantages'] for t in trajectories])
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
+    disc_sum_rew0 = np.concatenate([-1*t['disc_sum_rew'][-1] for t in trajectories])
 
-    return observes, actions, advantages, disc_sum_rew
+    return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
 
 def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode):
@@ -281,7 +282,7 @@ def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode
                 })
 
 
-def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, visualize):
+def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, visualize,risk_targ):
     """ Main training loop
 
     Args:
@@ -306,7 +307,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar,risk_targ,'VaR',batch_size, 95)
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, episodes=5)
     episode = 0
@@ -317,11 +318,12 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam)  # calculate advantage
         # concatenate all episodes into single NumPy arrays
-        observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+        observes, actions, advantages, disc_sum_rew, disc_sum_rew0  = build_train_set(trajectories)
         print('disc_sum_rew', disc_sum_rew)
+        print('disc_sum_rew0', disc_sum_rew0)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, disc_sum_rew, logger)  # update policy
+        policy.update(observes, actions, advantages, disc_sum_rew0, logger)  # update policy
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         if killer.kill_now:
@@ -338,15 +340,17 @@ if __name__ == "__main__":
                                                   'using Proximal Policy Optimizer'))
     parser.add_argument('env_name', type=str, help='OpenAI Gym environment name')
     parser.add_argument('-n', '--num_episodes', type=int, help='Number of episodes to run',
-                        default=1000)
+                        default=2000)
     parser.add_argument('-g', '--gamma', type=float, help='Discount factor', default=0.995)
     parser.add_argument('-l', '--lam', type=float, help='Lambda for Generalized Advantage Estimation',
                         default=0.98)
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default=0.003)
+    parser.add_argument('-r', '--risk_targ', type=float, help='Risk target value or Constraint',
+                        default = 1240)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
-                        default=20)
+                        default=200)
     parser.add_argument('-m', '--hid1_mult', type=int,
                         help='Size of first hidden layer for value and policy NNs'
                              '(integer multiplier of observation dimension)',
