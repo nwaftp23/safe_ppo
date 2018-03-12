@@ -256,6 +256,7 @@ def build_train_set(trajectories):
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
     disc_sum_rew0 = np.concatenate([-1*t['disc_sum_rew'][-1] for t in trajectories])
+    print(disc_sum_rew0)
 
     return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
