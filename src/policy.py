@@ -119,7 +119,7 @@ class Policy(object):
 
     def _risk_metric(self):
         if self.risk_option == 'VaR':
-            self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew,alpha)
+            self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew,self.alpha)
         elif self.risk_option == 'CVaR':
             cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
             self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew,cutoff))
@@ -224,7 +224,7 @@ class Policy(object):
         if risk_metric > self.risk_targ * 1.5:
             self.lamb *= 2
         elif risk_metric < self.risk_targ / 1.5:
-            self.lamb = self.lamb /= 2
+            self.lamb /= 2
 
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
