@@ -1,4 +1,3 @@
-#i! /usr/bin/env python3
 """
 PPO: Proximal Policy Optimization
 
@@ -102,11 +101,11 @@ def run_episode(env, policy, scaler, animate=False):
         action = policy.sample(obs).reshape((1, -1)).astype(np.float32)
         actions.append(action)
         obs, reward, done, _ = env.step(np.squeeze(action, axis=0))
+        print(reward)
         if not isinstance(reward, float):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
@@ -235,7 +234,6 @@ def EVaR(rewards, threshold):
     Idea incorporate the natural gradient look at paper"""
 
 
-
 def build_train_set(trajectories):
     """
 
@@ -256,7 +254,6 @@ def build_train_set(trajectories):
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
     disc_sum_rew0 = np.concatenate([-1*t['disc_sum_rew'][-1] for t in trajectories])
-
     return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
 
