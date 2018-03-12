@@ -95,7 +95,7 @@ class Optimal_Stop(gym.Env):
         crash = bool(distance <= 0)
         if crash:
             print('Car Crash! from step')
-            reward = -5000
+            reward = -5000.0
             done = True
         self.state = (position, distance, speed)
         return np.array(self.state), reward, done, {}

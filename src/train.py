@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 """
 PPO: Proximal Policy Optimization
 
@@ -64,6 +65,7 @@ def init_gym(env_name):
     env = gym.make(env_name)
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
+    print(act_dim)
     return env, obs_dim, act_dim
 
 
@@ -101,7 +103,6 @@ def run_episode(env, policy, scaler, animate=False):
         action = policy.sample(obs).reshape((1, -1)).astype(np.float32)
         actions.append(action)
         obs, reward, done, _ = env.step(np.squeeze(action, axis=0))
-        print(reward)
         if not isinstance(reward, float):
             reward = np.asscalar(reward)
         rewards.append(reward)
