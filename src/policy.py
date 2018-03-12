@@ -198,7 +198,6 @@ class Policy(object):
                      self.lamb_ph: self.lamb,
                      self.lr_ph: self.lr * self.lr_multiplier,
                      self.disc_sum_rew0: disc_sum_rew}
-        #print(feed_dict)
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
