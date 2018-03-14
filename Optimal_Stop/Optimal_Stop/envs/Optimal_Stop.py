@@ -4,6 +4,7 @@ from gym.utils import seeding
 import numpy as np
 import pygame
 #Let's import the Car Class
+WHITE = (255, 255, 255)
 
 class Car(pygame.sprite.Sprite):
     #This class represents a car. It derives from the "Sprite" class in Pygame.
@@ -80,7 +81,7 @@ class Optimal_Stop(gym.Env):
         return [seed]
 
     def step(self, action):
-        action = np.clip(action, min = self.min_acceleration, max = self.max_acceleration)
+        action = np.clip(action, self.min_acceleration, self.max_acceleration)
         position, distance, speed = self.state
         speed += action
         speed = np.clip(speed, self.min_speed, self.max_speed)

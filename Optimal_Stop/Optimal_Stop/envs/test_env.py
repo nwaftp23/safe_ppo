@@ -4,7 +4,7 @@ rolling = Safe_Stop()
 rolling.rollout(.05)
 """
 
-from Optimal_stop import *
+from Optimal_Stop import *
 done = False
 env = Optimal_Stop()
 env.open_pygame()
