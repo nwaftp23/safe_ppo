@@ -259,6 +259,9 @@ def build_train_set(trajectories):
     disc_sum_rew0 = np.concatenate([-1*t['disc_sum_rew'][-1] for t in trajectories])
     return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
+def get_end_policy_dist(policy, n):
+    run_policy(env, policy, scaler, logger, episodes=n)
+
 
 def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode):
     """ Log various batch statistics """
@@ -330,6 +333,16 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             if input('Terminate training (y/[n])? ') == 'y':
                 break
             killer.kill_now = False
+    tr = run_policy(env, policy, scaler, logger, episodes=1000)
+    sum_rewww = [t['rewards'].sum() for t in tr]
+    hist_dat = np.array(sum_rewww)
+    print(hist_dat)
+    fig = plt.hist(hist_dat)
+    plt.title('Standard PPO')
+    plt.xlabel("Sum of Rewards")
+    plt.ylabel("Frequency")
+    plt.savefig("standard_ppo.png")
+    plt.close(fig)
     logger.close()
     policy.close_sess()
     val_func.close_sess()
