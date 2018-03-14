@@ -49,7 +49,7 @@ class Car(pygame.sprite.Sprite):
 
 
 class Optimal_Stop(gym.Env):
-
+    metadata = {'render.modes': ['human', 'rgb_array']}
     def __init__(self):
         self.max_position = 10**4
         self.min_position = -10**2
@@ -80,7 +80,7 @@ class Optimal_Stop(gym.Env):
         return [seed]
 
     def step(self, action):
-        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        action = np.clip(action, min = self.min_acceleration, max = self.max_acceleration)
         position, distance, speed = self.state
         speed += action
         speed = np.clip(speed, self.min_speed, self.max_speed)
@@ -160,7 +160,7 @@ class Optimal_Stop(gym.Env):
         self.y0 = 0
         self.y1 = 0
 
-    def render(self):
+    def render(self, close=False):
         # Scroll the background to make it seem
         # as if the blue car is moving
         self.y1 = (self.y1 + self.state[2]) % self.h
