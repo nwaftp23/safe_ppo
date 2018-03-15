@@ -69,7 +69,6 @@ class Optimal_Stop(gym.Env):
         self.reset()
         self.seed()
         self.stuck_time = 10000
-        self.stop_ticker = 0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -83,14 +82,14 @@ class Optimal_Stop(gym.Env):
         position += speed
         position = np.clip(position, self.min_position, self.max_position)
         if (position==self.min_position and speed<0): speed = 0
-        done = bool(position >= self.goal_position)
-        print('driver position', )
         reward = -1.0
         self.rand_stop()
         self.driver_position += self.driver_speed
-        print('driver position', self.driver_position, 'agent position', position)
+        if self.random_stop:
+            print('driver position', self.driver_position, 'agent position', position)
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
+        done = bool(position >= self.goal_position)
         if crash:
             print('Car Crash!')
             reward = -2000.0
@@ -105,11 +104,13 @@ class Optimal_Stop(gym.Env):
         print('stop T/F', self.random_stop)
         if self.random_stop:
             self.stop_position = np.random.uniform(1000,4*10**3)
+            print('location of accident', self.stop_position)
         else:
             self.stop_position = 3*self.goal_position
         self.state = np.array([180, 240, 15])
         self.driver_speed = 15
         self.driver_position = 420
+        self.stop_ticker = 0
         #Reset Sprites and speed before next rollout
         self.all_coming_cars = []
         self.all_sprites_list = []
