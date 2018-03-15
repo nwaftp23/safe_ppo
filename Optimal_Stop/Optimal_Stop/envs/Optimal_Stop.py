@@ -68,7 +68,7 @@ class Optimal_Stop(gym.Env):
         self.stop_prob = 0.05
         self.reset()
         self.seed()
-        self.stuck_time = 100
+        self.stuck_time = 500
         self.stop_ticker = 0
 
     def seed(self, seed=None):
