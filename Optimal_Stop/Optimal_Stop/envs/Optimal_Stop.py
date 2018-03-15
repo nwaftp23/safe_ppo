@@ -68,7 +68,7 @@ class Optimal_Stop(gym.Env):
         self.stop_prob = 0.05
         self.reset()
         self.seed()
-        self.stuck_time = 10000
+        self.stuck_time = 1000
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -85,8 +85,6 @@ class Optimal_Stop(gym.Env):
         reward = -1.0
         self.rand_stop()
         self.driver_position += self.driver_speed
-        if self.random_stop:
-            print('driver position', self.driver_position, 'agent position', position)
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
         done = bool(position >= self.goal_position)
@@ -104,7 +102,6 @@ class Optimal_Stop(gym.Env):
         print('stop T/F', self.random_stop)
         if self.random_stop:
             self.stop_position = np.random.uniform(1000,4*10**3)
-            print('location of accident', self.stop_position)
         else:
             self.stop_position = 3*self.goal_position
         self.state = np.array([180, 240, 15])
