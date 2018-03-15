@@ -65,14 +65,9 @@ class Optimal_Stop(gym.Env):
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
         self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
         self.observation_space = spaces.Box(low=self.low, high=self.high)
-        self.stop_prob = 0.05
-        self.random_stop = bool(np.random.uniform() < self.stop_prob)
-        if self.random_stop:
-            self.stop_position = np.random.uniform(100,4*10**3)
-        else:
-            self.stop_position = 3*self.goal_position
-        self.seed()
+        self.stop_prob = 0.50
         self.reset()
+        self.seed()
         self.stuck_time = 100
         self.stop_ticker = 0
 
@@ -95,7 +90,7 @@ class Optimal_Stop(gym.Env):
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
         if crash:
-            print('Car Crash! from step')
+            print('Car Crash!')
             reward = -2000.0
             done = True
         self.state = (position, distance, speed)
@@ -103,6 +98,13 @@ class Optimal_Stop(gym.Env):
 
     def reset(self):
         "state = position, distance, speed"
+        self.random_number = np.random.uniform()
+        self.random_stop = bool(self.random_number < self.stop_prob)
+        print('stop T/F', self.random_stop)
+        if self.random_stop:
+            self.stop_position = np.random.uniform(1000,4*10**3)
+        else:
+            self.stop_position = 3*self.goal_position
         self.state = np.array([180, 240, 15])
         self.driver_speed = 15
         self.driver_position = 420
@@ -160,6 +162,7 @@ class Optimal_Stop(gym.Env):
         self.screen = pygame.display.set_mode(size)
         self.y0 = 0
         self.y1 = 0
+
 
     def render(self, close=False):
         # Scroll the background to make it seem

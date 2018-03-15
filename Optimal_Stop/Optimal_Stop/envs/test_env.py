@@ -7,7 +7,10 @@ rolling.rollout(.05)
 from Optimal_Stop import *
 done = False
 env = Optimal_Stop()
-env.open_pygame()
-while not done:
-    state, reward, done, _ = env.step(np.array([-.05]))
-    env.render()
+for i in range(5):
+    done = False
+    env.reset()
+    env.open_pygame()
+    while not done:
+        state, reward, done, _ = env.step(np.array([.005]))
+        env.render()
