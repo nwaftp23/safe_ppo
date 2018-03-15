@@ -65,7 +65,7 @@ class Optimal_Stop(gym.Env):
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
         self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
         self.observation_space = spaces.Box(low=self.low, high=self.high)
-        self.stop_prob = 0.50
+        self.stop_prob = 0.05
         self.reset()
         self.seed()
         self.stuck_time = 100
