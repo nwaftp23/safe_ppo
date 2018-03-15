@@ -84,9 +84,11 @@ class Optimal_Stop(gym.Env):
         position = np.clip(position, self.min_position, self.max_position)
         if (position==self.min_position and speed<0): speed = 0
         done = bool(position >= self.goal_position)
+        print('driver position', )
         reward = -1.0
         self.rand_stop()
         self.driver_position += self.driver_speed
+        print('driver position', self.driver_position, 'agent position', position)
         distance = (self.driver_position) - position
         crash = bool(distance <= 0)
         if crash:
