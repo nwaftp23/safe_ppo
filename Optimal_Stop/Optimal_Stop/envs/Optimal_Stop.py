@@ -68,7 +68,7 @@ class Optimal_Stop(gym.Env):
         self.stop_prob = 0.05
         self.reset()
         self.seed()
-        self.stuck_time = 1000
+        self.stuck_time = 5000
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
