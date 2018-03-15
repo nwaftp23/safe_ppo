@@ -115,7 +115,7 @@ class Optimal_Stop(gym.Env):
         return np.array(self.state)
 
     def rand_stop(self):
-        if self.driver_position > self.stop_position and self.stop_ticker < 101:
+        if self.driver_position > self.stop_position and self.stop_ticker < (self.stuck_time+1):
             self.driver_speed = 0
             self.stop_ticker += 1
         elif 101 <= self.stop_ticker< 104 :
