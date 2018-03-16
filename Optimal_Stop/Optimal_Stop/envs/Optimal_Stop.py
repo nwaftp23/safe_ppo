@@ -59,8 +59,8 @@ class Optimal_Stop(gym.Env):
         self.max_speed = 20
         self.min_speed = 0
         self.max_acceleration = 5
-        self.min_acceleration = -5
-        self.goal_position = 5*10**3
+        self.min_acceleration = -0.5
+        self.goal_position = 10**3
         self.low = np.array([self.min_position,self.min_distance, self.min_speed])
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
         self.action_space = spaces.Box(low=self.min_acceleration, high=self.max_acceleration, shape=(1,))
@@ -68,7 +68,7 @@ class Optimal_Stop(gym.Env):
         self.stop_prob = 0.05
         self.reset()
         self.seed()
-        self.stuck_time = 5000
+        self.stuck_time = 10
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -90,7 +90,7 @@ class Optimal_Stop(gym.Env):
         done = bool(position >= self.goal_position)
         if crash:
             print('Car Crash!')
-            reward = -2000.0
+            reward = -100.0
             done = True
         self.state = (position, distance, speed)
         return np.array(self.state), reward, done, {}
@@ -101,12 +101,13 @@ class Optimal_Stop(gym.Env):
         self.random_stop = bool(self.random_number < self.stop_prob)
         print('stop T/F', self.random_stop)
         if self.random_stop:
-            self.stop_position = np.random.uniform(1000,4*10**3)
+            self.stop_position = 975 # right before end stop position
+            #self.stop_position = np.random.uniform(1000,4*10**3) # random stop position
         else:
             self.stop_position = 3*self.goal_position
-        self.state = np.array([180, 240, 15])
+        self.state = np.array([0, 240, 15])
         self.driver_speed = 15
-        self.driver_position = 420
+        self.driver_position = 240
         self.stop_ticker = 0
         #Reset Sprites and speed before next rollout
         self.all_coming_cars = []
@@ -148,8 +149,8 @@ class Optimal_Stop(gym.Env):
         self.GREY = (210, 210 ,210)
         self.WHITE = (255, 255, 255)
         self.RED = (255, 0, 0)
-        SCREENWIDTH=220
-        SCREENHEIGHT=600
+        SCREENWIDTH = 220
+        SCREENHEIGHT = 600
         size = (SCREENWIDTH, SCREENHEIGHT)
         self.start_x_agent = 80
         self.start_y_agent = SCREENHEIGHT - 180
