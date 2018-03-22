@@ -1,11 +1,10 @@
 Metadata-Version: 1.0
 Name: Optimal-Stop
 Version: 0.0.1
-Summary: UNKNOWN
-Home-page: UNKNOWN
-Author: UNKNOWN
+Summary: Open AI Gym environment to test risk averse algorithms
+Home-page: https://github.com/nwaftp23/safe_ppo/tree/master/Optimal_Stop
+Author: Lucas Berry
 Author-email: UNKNOWN
 License: UNKNOWN
-Description-Content-Type: UNKNOWN
 Description: UNKNOWN
 Platform: UNKNOWN

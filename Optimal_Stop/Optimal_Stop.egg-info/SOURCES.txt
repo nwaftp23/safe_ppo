@@ -2,5 +2,6 @@ README.md
 Optimal_Stop.egg-info/PKG-INFO
 Optimal_Stop.egg-info/SOURCES.txt
 Optimal_Stop.egg-info/dependency_links.txt
+Optimal_Stop.egg-info/not-zip-safe
 Optimal_Stop.egg-info/requires.txt
 Optimal_Stop.egg-info/top_level.txt
