@@ -8,7 +8,7 @@ from Optimal_Stop import *
 done = False
 env = Optimal_Stop()
 steppp = []
-for i in range(200):
+for i in range(1):
     done = False
     steps = 0
     env.reset()

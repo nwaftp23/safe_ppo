@@ -119,7 +119,7 @@ class Optimal_Stop(gym.Env):
         if self.driver_position > self.stop_position and self.stop_ticker < (self.stuck_time+1):
             self.driver_speed = 0
             self.stop_ticker += 1
-		elif (self.stuck_time+1) <= self.stop_ticker < (self.stuck_time+4):
+        elif (self.stuck_time+1) <= self.stop_ticker < (self.stuck_time+4):
             self.driver_speed += 6
             self.stop_ticker += 1
         else:
