@@ -1,16 +1,21 @@
 import numpy as np
 
 
-def discounted_rewards(stopping_speed, stop_position, stuck_time, penalty, gamma, goal, percent_stop):
+def discounted_rewards(cruising_speed, stopping_speed, stop_position, stuck_time, penalty, gamma, goal, percent_stop):
 	'''Helper to find the discounted sum of returns,
 	this will help me build my environment to induce
 	the behavior that I want'''
 	goal_from_leader = goal-240
-	steps_to_stop = int(np.ceil(15/stopping_speed))
-	opt_steps = int(np.ceil(goal_from_leader/15))
+	leader_at_goal = np.ceil(goal_from_leader/cruising_speed)*cruising_speed
+	steps_to_stop = int(np.ceil(cruising_speed/stopping_speed))
+	pl = np.array([cruising_speed]*steps_to_stop)
+	pll = np.arange(steps_to_stop)*stopping_speed
+	risk_averse_separation = np.sum(pl-pll)
+	extra_steps = int(np.ceil((leader_at_goal-risk_averse_sepration)/cruising_speed)) 
+	opt_steps = int(np.ceil(goal_from_leader/cruising_speed))
 	opt = [-1]*opt_steps
 	sum_opt = np.polyval(opt, gamma)
-	opt_wait = [-1]*(opt_steps+how_long_to_stop)
+	opt_wait = [-1]*(opt_steps+extra_steps)
 	sum_opt_wait = np.polyval(opt_wait, gamma)
 	opt_stuck = [-1]*(opt_steps+stuck_time+magic_number)
 	sum_opt_stuck = np.polyval(opt_stuck, gamma)
