@@ -34,4 +34,4 @@ def discounted_rewards(start, cruising_speed, stopping_speed, stop_position, stu
 	print('risk_neutral sum of rewards', risk_neutral)
 
 
-discounted_rewards(100, 18, 1, 1780, 30, -100, 0.9999, 1800, 0.05)
+discounted_rewards(100, 18, 1, 1780, 30, -100, 1, 1800, 0.05)
