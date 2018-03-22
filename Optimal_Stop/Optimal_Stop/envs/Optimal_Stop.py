@@ -24,7 +24,7 @@ class Car(pygame.sprite.Sprite):
         self.height = height
         self.color = color
         self.max_speed = max_speed
-        self.speed = 15
+        self.speed = 18
 
         # Draw the car (a rectangle!)
         pygame.draw.rect(self.image, self.color, [0, 0, self.width, self.height])
@@ -56,10 +56,10 @@ class Optimal_Stop(gym.Env):
         self.min_position = -10**2
         self.max_distance = 10**12
         self.min_distance = 0
-        self.max_speed = 20
+        self.max_speed = 19
         self.min_speed = 0
         self.max_acceleration = 5
-        self.min_acceleration = -0.5
+        self.min_acceleration = -1
         self.goal_position = 10**3
         self.low = np.array([self.min_position,self.min_distance, self.min_speed])
         self.high = np.array([self.max_position,self.max_distance, self.max_speed])
@@ -68,7 +68,7 @@ class Optimal_Stop(gym.Env):
         self.stop_prob = 0.05
         self.reset()
         self.seed()
-        self.stuck_time = 10
+        self.stuck_time = 30
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -101,12 +101,12 @@ class Optimal_Stop(gym.Env):
         self.random_stop = bool(self.random_number < self.stop_prob)
         print('stop T/F', self.random_stop)
         if self.random_stop:
-            self.stop_position = 975 # right before end stop position
+            self.stop_position = 980 # right before end stop position
             #self.stop_position = np.random.uniform(1000,4*10**3) # random stop position
         else:
             self.stop_position = 3*self.goal_position
-        self.state = np.array([0, 240, 15])
-        self.driver_speed = 15
+        self.state = np.array([0, 240, 18])
+        self.driver_speed = 18
         self.driver_position = 240
         self.stop_ticker = 0
         #Reset Sprites and speed before next rollout

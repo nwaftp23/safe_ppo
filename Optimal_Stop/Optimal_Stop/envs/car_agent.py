@@ -20,7 +20,7 @@ class Car(pygame.sprite.Sprite):
         self.height = height
         self.color = color
         self.max_speed = max_speed
-        self.speed = 15
+        self.speed = 18
 
         # Draw the car (a rectangle!)
         pygame.draw.rect(self.image, self.color, [0, 0, self.width, self.height])
