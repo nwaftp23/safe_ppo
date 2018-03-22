@@ -65,7 +65,6 @@ def init_gym(env_name):
     env = gym.make(env_name)
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
-    print(act_dim)
     return env, obs_dim, act_dim
 
 
@@ -170,6 +169,23 @@ def add_disc_sum_rew(trajectories, gamma):
         trajectory['disc_sum_rew'] = disc_sum_rew
 
 
+def add_disc_sum_rew_noscale(trajectories, gamma):
+    """ Adds discounted sum of rewards to all time steps of all trajectories 
+    not scaled
+
+    Args:
+        trajectories: as returned by run_policy()
+        gamma: discount
+
+    Returns:
+        None (mutates trajectories dictionary to add 'disc_sum_rew')
+    """
+    for trajectory in trajectories:
+        rewards = trajectory['rewards']
+        disc_sum_rew = discount(rewards, gamma)
+        trajectory['disc_sum_rew_noscale'] = disc_sum_rew
+
+
 def add_value(trajectories, val_func):
     """ Adds estimated value to all time steps of all trajectories
 
@@ -254,9 +270,7 @@ def build_train_set(trajectories):
     advantages = np.concatenate([t['advantages'] for t in trajectories])
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
-    print(trajectories)
-    input('yo')
-    disc_sum_rew0 = np.concatenate([-1*t['disc_sum_rew'][-1] for t in trajectories])
+    disc_sum_rew0 = np.array([t['disc_sum_rew_noscale'][0] for t in trajectories])
     return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
 def get_end_policy_dist(policy, n):
@@ -319,11 +333,10 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
+        add_disc_sum_rew_noscale(trajectories, gamma)  # calculated discounted sum of Rs not scale        
         add_gae(trajectories, gamma, lam)  # calculate advantage
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew, disc_sum_rew0  = build_train_set(trajectories)
-        print('disc_sum_rew', disc_sum_rew)
-        print('disc_sum_rew0', disc_sum_rew0)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
         policy.update(observes, actions, advantages, disc_sum_rew0, logger)  # update policy
@@ -333,15 +346,14 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             if input('Terminate training (y/[n])? ') == 'y':
                 break
             killer.kill_now = False
-    tr = run_policy(env, policy, scaler, logger, episodes=1000)
+    tr = run_policy(env, policy, scaler, logger, episodes=100)
     sum_rewww = [t['rewards'].sum() for t in tr]
     hist_dat = np.array(sum_rewww)
-    print(hist_dat)
     fig = plt.hist(hist_dat)
     plt.title('Standard PPO')
     plt.xlabel("Sum of Rewards")
     plt.ylabel("Frequency")
-    plt.savefig("standard_ppo.png")
+    plt.savefig("RA_ppo.png")
     plt.close(fig)
     logger.close()
     policy.close_sess()
@@ -360,10 +372,10 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default=0.003)
     parser.add_argument('-r', '--risk_targ', type=float, help='Risk target value or Constraint',
-                        default = 1240)
+                        default = -40)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
-                        default=200)
+                        default=20)
     parser.add_argument('-m', '--hid1_mult', type=int,
                         help='Size of first hidden layer for value and policy NNs'
                              '(integer multiplier of observation dimension)',

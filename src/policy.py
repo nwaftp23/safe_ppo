@@ -197,7 +197,7 @@ class Policy(object):
                      self.eta_ph: self.eta,
                      self.lamb_ph: self.lamb,
                      self.lr_ph: self.lr * self.lr_multiplier,
-                     self.disc_sum_rew0: disc_sum_rew}
+                     self.disc_sum_rew: disc_sum_rew}
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
@@ -220,15 +220,15 @@ class Policy(object):
             self.beta = np.maximum(1 / 35, self.beta / 1.5)  # min clip beta
             if self.beta < (1 / 30) and self.lr_multiplier < 10:
                 self.lr_multiplier *= 1.5
-        if risk_metric > self.risk_targ * 1.5:
+        if risk_metric < self.risk_targ * 1.5:
             self.lamb *= 2
-        elif risk_metric < self.risk_targ / 1.5:
+        elif risk_metric > self.risk_targ / 1.5:
             self.lamb /= 2
 
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
                     'KL': kl,
-                    risk_option: risk_metric,
+                    self.risk_option: risk_metric,
                     'Beta': self.beta,
                     '_lr_multiplier': self.lr_multiplier})
 

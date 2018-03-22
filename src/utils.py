@@ -103,6 +103,7 @@ class Logger(object):
         log_keys.sort()
         print('***** Episode {}, Mean R = {:.1f} *****'.format(log['_Episode'],
                                                                log['_MeanReward']))
+
         for key in log_keys:
             if key[0] != '_':  # don't display log items with leading '_'
                 print('{:s}: {:.3g}'.format(key, log[key]))
