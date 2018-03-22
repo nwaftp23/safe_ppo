@@ -56,7 +56,7 @@ class Optimal_Stop(gym.Env):
         self.min_position = -10**2
         self.max_distance = 10**12
         self.min_distance = 0
-        self.max_speed = 19
+        self.max_speed = 20
         self.min_speed = 0
         self.max_acceleration = 5
         self.min_acceleration = -1
@@ -105,9 +105,9 @@ class Optimal_Stop(gym.Env):
             #self.stop_position = np.random.uniform(1000,4*10**3) # random stop position
         else:
             self.stop_position = 3*self.goal_position
-        self.state = np.array([0, 240, 18])
+        self.state = np.array([0, 50, 18])
         self.driver_speed = 18
-        self.driver_position = 240
+        self.driver_position = 50
         self.stop_ticker = 0
         #Reset Sprites and speed before next rollout
         self.all_coming_cars = []
@@ -153,7 +153,7 @@ class Optimal_Stop(gym.Env):
         SCREENHEIGHT = 600
         size = (SCREENWIDTH, SCREENHEIGHT)
         self.start_x_agent = 80
-        self.start_y_agent = SCREENHEIGHT - 180
+        self.start_y_agent = 100+50
         self.start_x_driver = 80
         self.start_y_driver = 100
         self.make_sprites()
@@ -168,6 +168,8 @@ class Optimal_Stop(gym.Env):
     def render(self, close=False):
         # Scroll the background to make it seem
         # as if the blue car is moving
+        self.y0 = 0
+        self.y1 = 0
         self.y1 = (self.y1 + self.state[2]) % self.h
         self.screen.blit(self.background,(0,-(self.h-self.y1)))
         self.screen.blit(self.background,(0,self.y1))
