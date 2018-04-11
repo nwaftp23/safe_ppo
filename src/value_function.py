@@ -73,7 +73,10 @@ class NNValueFunction(object):
         num_batches = max(x.shape[0] // 256, 1)
         batch_size = x.shape[0] // num_batches
         y_hat = self.predict(x)  # check explained variance prior to update
-        old_exp_var = 1 - np.var(y - y_hat)/np.var(y)
+        if np.var(y) == 0:
+            old_exp_var = 1 - np.var(y - y_hat)
+        else:
+            old_exp_var = 1 - np.var(y - y_hat)/np.var(y)
         if self.replay_buffer_x is None:
             x_train, y_train = x, y
         else:
@@ -91,7 +94,10 @@ class NNValueFunction(object):
                 _, l = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
         y_hat = self.predict(x)
         loss = np.mean(np.square(y_hat - y))         # explained variance after update
-        exp_var = 1 - np.var(y - y_hat) / np.var(y)  # diagnose over-fitting of val func
+        if np.var(y) == 0:
+            exp_var = 1 - np.var(y - y_hat)
+        else:
+            exp_var = 1 - np.var(y - y_hat) / np.var(y)  # diagnose over-fitting of val func
 
         logger.log({'ValFuncLoss': loss,
                     'ExplainedVarNew': exp_var,

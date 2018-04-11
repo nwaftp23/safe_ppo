@@ -14,6 +14,7 @@ def discounted_rewards(start, cruising_speed, stopping_speed, stop_position, stu
 	extra_steps = int(np.ceil((risk_averse_separation)/cruising_speed))
 	opt_steps = int(np.ceil(goal_from_leader/cruising_speed))
 	print('optimal number of steps are', opt_steps)
+	print('risk averse separation', risk_averse_separation)
 	opt = [-1]*opt_steps
 	sum_opt = np.polyval(opt, gamma)
 	opt_wait = [-1]*(opt_steps+extra_steps)
@@ -34,4 +35,5 @@ def discounted_rewards(start, cruising_speed, stopping_speed, stop_position, stu
 	print('risk_neutral sum of rewards', risk_neutral)
 
 
-discounted_rewards(100, 18, 1, 1780, 30, -100, 0.9999, 1800, 0.05)
+# (start, cruising_speed, stopping_speed, stop_position, stuck_time, penalty, gamma, goal, percent_stop)
+discounted_rewards(100, 18, .75, 1779, 30, -1000, 0.995, 1800, 0.01)

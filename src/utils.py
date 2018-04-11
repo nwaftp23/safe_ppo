@@ -22,13 +22,14 @@ class Scaler(object):
         Args:
             obs_dim: dimension of axis=1
         """
-        self.vars = np.zeros(obs_dim)
+        self.varss = np.zeros(obs_dim)
         self.means = np.zeros(obs_dim)
-        self.m = 0
+        self.mean_rew = 0
+        self.var_rew = 0
         self.n = 0
         self.first_pass = True
 
-    def update(self, x):
+    def update(self, x, r):
         """ Update running mean and variance (this is an exact method)
         Args:
             x: NumPy array, shape = (N, obs_dim)
@@ -38,25 +39,35 @@ class Scaler(object):
         """
         if self.first_pass:
             self.means = np.mean(x, axis=0)
-            self.vars = np.var(x, axis=0)
-            self.m = x.shape[0]
+            self.varss = np.var(x, axis=0)
+            self.mean_rew = np.mean(r)
+            self.var_rew = np.var(r)
+            self.n = len(r)
             self.first_pass = False
         else:
-            n = x.shape[0]
+            m = x.shape[0]
             new_data_var = np.var(x, axis=0)
             new_data_mean = np.mean(x, axis=0)
-            new_data_mean_sq = np.square(new_data_mean)
-            new_means = ((self.means * self.m) + (new_data_mean * n)) / (self.m + n)
-            self.vars = (((self.m * (self.vars + np.square(self.means))) +
-                          (n * (new_data_var + new_data_mean_sq))) / (self.m + n) -
+            new_means = ((self.means * self.n) + (new_data_mean * m)) / (self.n + m)
+            self.varss = (((self.n * (self.varss + np.square(self.means))) +
+                          (m * (new_data_var + np.square(new_data_mean)))) / (self.n + m) -
                          np.square(new_means))
-            self.vars = np.maximum(0.0, self.vars)  # occasionally goes negative, clip
+            print('Is variance less than 0', self.varss < 0)
             self.means = new_means
-            self.m += n
+            self.n += m
+            new_data_var_rew = np.var(r, axis=0)
+            new_data_mean_rew = np.mean(r, axis=0)
+            new_means_rew = ((self.mean_rew * self.n) + (new_data_mean_rew * m)) / (self.n + m)
+            self.var_rew = (((self.n * (self.var_rew + np.square(self.mean_rew))) +
+                          (m * (new_data_var_rew + np.square(new_data_mean_rew)))) / (self.n + m) -
+                         np.square(new_means_rew))
+            print('Is variance less than 0', self.var_rew < 0)
+
+
 
     def get(self):
         """ returns 2-tuple: (scale, offset) """
-        return 1/(np.sqrt(self.vars) + 0.1)/3, self.means
+        return 1/(np.sqrt(self.varss) + 0.1)/3, self.means
 
 
 class Logger(object):
@@ -67,12 +78,12 @@ class Logger(object):
             logname: name for log (e.g. 'Hopper-v1')
             now: unique sub-directory name (e.g. date/time string)
         """
-        path = os.path.join('log-files', logname, now)
-        os.makedirs(path)
+        self.path = os.path.join('log-files', logname, now)
+        os.makedirs(self.path)
         filenames = glob.glob('*.py')  # put copy of all python files in log_dir
         for filename in filenames:     # for reference
-            shutil.copy(filename, path)
-        path = os.path.join(path, 'log.csv')
+            shutil.copy(filename, self.path)
+        path = os.path.join(self.path, 'log.csv')
 
         self.write_header = True
         self.log_entry = {}
@@ -103,7 +114,6 @@ class Logger(object):
         log_keys.sort()
         print('***** Episode {}, Mean R = {:.1f} *****'.format(log['_Episode'],
                                                                log['_MeanReward']))
-
         for key in log_keys:
             if key[0] != '_':  # don't display log items with leading '_'
                 print('{:s}: {:.3g}'.format(key, log[key]))
@@ -116,6 +126,17 @@ class Logger(object):
             items: dictionary of items to update
         """
         self.log_entry.update(items)
+
+    def final_log(self):
+        ''' Logs every file that updates during learning and can't be logged in loop
+
+        '''
+        graphs = glob.glob('*.png')
+        pkl = glob.glob('*.pkl')
+        filenames = graphs + pkl
+        for filename in filenames:     # for reference
+            shutil.copy(filename, self.path)
+
 
     def close(self):
         """ Close log file - log cannot be written after this """

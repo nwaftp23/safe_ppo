@@ -160,17 +160,29 @@ def add_disc_sum_rew(trajectories, gamma):
     Returns:
         None (mutates trajectories dictionary to add 'disc_sum_rew')
     """
-    for trajectory in trajectories:
-        if gamma < 0.999:  # don't scale for gamma ~= 1
-            rewards = trajectory['rewards'] * (1 - gamma)
-        else:
-            rewards = trajectory['rewards']
-        disc_sum_rew = discount(rewards, gamma)
-        trajectory['disc_sum_rew'] = disc_sum_rew
+    #Ideas for new scaling, why using gamma. Just set
+	#a pre determined factor like 0.01, can tray a few
+	#also try a normalization like suggested in the paper
+    '''Original Scaling'''
+    #if gamma < 0.999:  # don't scale for gamma ~= 1
+    #    rewards = trajectory['rewards'] * (1 - gamma)
+    #else:
+    #    rewards = trajectory['rewards']
+    '''Standard deviation scaling'''
+    rewards = normalize_rew(trajectory, mu, sig)
+    disc_sum_rew = discount(rewards, gamma)
+    trajectory['disc_sum_rew'] = disc_sum_rew
+
+def normalize_rew(trajectory, mu, sig):
+    if sig == 0:
+        rewards = (trajectory['rewards'])
+    else:
+        rewards = (trajectory['rewards'])/np.sqrt(sig)
+    return rewards
 
 
 def add_disc_sum_rew_noscale(trajectories, gamma):
-    """ Adds discounted sum of rewards to all time steps of all trajectories 
+    """ Adds discounted sum of rewards to all time steps of all trajectories
     not scaled
 
     Args:
@@ -218,16 +230,19 @@ def add_gae(trajectories, gamma, lam):
     Returns:
         None (mutates trajectories dictionary to add 'advantages')
     """
-    for trajectory in trajectories:
-        if gamma < 0.999:  # don't scale for gamma ~= 1
-            rewards = trajectory['rewards'] * (1 - gamma)
-        else:
-            rewards = trajectory['rewards']
-        values = trajectory['values']
-        # temporal differences
-        tds = rewards - values + np.append(values[1:] * gamma, 0)
-        advantages = discount(tds, gamma * lam)
-        trajectory['advantages'] = advantages
+    # Lucas' correction
+    # try reward scaling suggested in the paper
+    '''Original Scaling'''
+    #if gamma < 0.999:  # don't scale for gamma ~= 1
+    #    rewards = trajectory['rewards'] * (1 - gamma)
+    #else:
+    #    rewards = trajectory['rewards']
+    '''standard deviation scaling'''
+    rewards = normalize_rew(trajectory, mu, sig)
+    # temporal differences
+    tds = rewards - values + np.append(values[1:] * gamma, 0)
+    advantages = discount(tds, gamma * lam)
+    trajectory['advantages'] = advantages
 
 def VaR(disc_sum_rewards,threshold):
     """ Calculates the VaR of the discounted sum of returns.
@@ -299,7 +314,110 @@ def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode
                 })
 
 
-def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, visualize,risk_targ):
+def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, print_results):
+    """ Main training loop
+
+    Args:
+        env_name: OpenAI Gym environment name, e.g. 'Hopper-v1'
+        num_episodes: maximum number of episodes to run
+        gamma: reward discount factor (float)
+        lam: lambda from Generalized Advantage Estimate
+        kl_targ: D_KL target for policy update [D_KL(pi_old || pi_new)
+        batch_size: number of episodes per policy training batch
+        hid1_mult: hid1 size for policy and value_f (mutliplier of obs dimension)
+        policy_logvar: natural log of initial policy variance
+    """
+    killer = GracefulKiller()
+    env, obs_dim, act_dim = init_gym(env_name)
+    obs_dim += 1  # add 1 to obs dimension for time step feature (see run_episode())
+    now_utc = datetime.utcnow()  # create unique directories
+    now = str(now_utc.day) + '-' + now_utc.strftime('%b') + '-' + str(now_utc.year) + '_' + str(((now_utc.hour-4)%24)) + '.' + str(now_utc.minute) + '.' + str(now_utc.second) # adjust for Montreal Time Zone
+    logger = Logger(logname=env_name, now = now)
+    aigym_path = os.path.join('/tmp', env_name, now)
+    #env = wrappers.Monitor(env, aigym_path, force=True)
+    scaler = Scaler(obs_dim)
+    val_func = NNValueFunction(obs_dim, hid1_mult)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar)
+    # run a few episodes of untrained policy to initialize scaler:
+    run_policy(env, policy, scaler, logger, episodes=5)
+    episode = 0
+    kl_terms = np.array([])
+    beta_terms = np.array([])
+    if print_results:
+        rew_graph = np.array([])
+        mean_rew_graph = np.array([])
+    while episode < num_episodes:
+        trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
+        episode += len(trajectories)
+        add_value(trajectories, val_func)  # add estimated values to episodes
+        add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
+        add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
+        disc0 = [t['disc_sum_rew'][0] for t in trajectories]
+        # concatenate all episodes into single NumPy arrays
+        observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+        # add various stats to training log:
+        log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
+        policy.update(observes, actions, advantages, logger)  # update policy
+        val_func.fit(observes, disc_sum_rew, logger)  # update value function
+        logger.write(display=True)  # write logger results to file and stdout
+        kl_terms = np.append(kl_terms,policy.check_kl)
+        if (episode % 20) == 0:
+            print('Running standard deviation after last mini batch is', scaler.var_rew)
+        x1 = list(range(1,(len(kl_terms)+1)))
+        rewards = plt.plot(x1,kl_terms)
+        plt.title('Standard PPO')
+        plt.xlabel("Episode")
+        plt.ylabel("KL Divergence")
+        plt.savefig("KL_curve.png")
+        plt.close()
+        beta_terms = np.append(beta_terms,policy.beta)
+        x2 = list(range(1,(len(beta_terms)+1)))
+        mean_rewards = plt.plot(x2,beta_terms)
+        plt.title('Standard PPO')
+        plt.xlabel("Batch")
+        plt.ylabel("Beta Lagrange Multiplier")
+        plt.savefig("lagrange_beta_curve.png")
+        plt.close()
+        if killer.kill_now:
+            if input('Terminate training (y/[n])? ') == 'y':
+                break
+            killer.kill_now = False
+        if print_results:
+            rew_graph = np.append(rew_graph,disc0)
+            x1 = list(range(1,(len(rew_graph)+1)))
+            rewards = plt.plot(x1,rew_graph)
+            plt.title('Standard PPO')
+            plt.xlabel("Episode")
+            plt.ylabel("Discounted sum of rewards")
+            plt.savefig("learning_curve.png")
+            plt.close()
+            mean_rew_graph = np.append(mean_rew_graph,np.mean(disc0))
+            x2 = list(range(1,(len(mean_rew_graph)+1)))
+            mean_rewards = plt.plot(x2,mean_rew_graph)
+            plt.title('Standard PPO')
+            plt.xlabel("Batch")
+            plt.ylabel("Mean of Last Batch")
+            plt.savefig("learning_curve2.png")
+            plt.close()
+    if print_results:
+        tr = run_policy(env, policy, scaler, logger, episodes=1000)
+        sum_rewww = [t['rewards'].sum() for t in tr]
+        hist_dat = np.array(sum_rewww)
+        fig = plt.hist(hist_dat,bins=2000, edgecolor='b', linewidth=1.2)
+        plt.title('Standard PPO')
+        plt.xlabel("Sum of Rewards")
+        plt.ylabel("Frequency")
+        plt.savefig("RA_ppo.png")
+        plt.close()
+        with open('sum_rew_final_policy.pkl', 'wb') as f:
+            pickle.dump(sum_rewww, f)
+        logger.final_log()
+    logger.final_log()
+    logger.close()
+    policy.close_sess()
+    val_func.close_sess()
+
+'''def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, visualize, risk_targ):
     """ Main training loop
 
     Args:
@@ -333,7 +451,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
-        add_disc_sum_rew_noscale(trajectories, gamma)  # calculated discounted sum of Rs not scale        
+        add_disc_sum_rew_noscale(trajectories, gamma)  # calculated discounted sum of Rs not scale
         add_gae(trajectories, gamma, lam)  # calculate advantage
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew, disc_sum_rew0  = build_train_set(trajectories)
@@ -358,7 +476,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     logger.close()
     policy.close_sess()
     val_func.close_sess()
-
+'''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
@@ -366,7 +484,7 @@ if __name__ == "__main__":
     parser.add_argument('env_name', type=str, help='OpenAI Gym environment name')
     parser.add_argument('-n', '--num_episodes', type=int, help='Number of episodes to run',
                         default=2000)
-    parser.add_argument('-g', '--gamma', type=float, help='Discount factor', default=0.995)
+    parser.add_argument('-g', '--gamma', type=float, help='Discount factor', default=0.9995)
     parser.add_argument('-l', '--lam', type=float, help='Lambda for Generalized Advantage Estimation',
                         default=0.98)
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
@@ -383,8 +501,14 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--policy_logvar', type=float,
                         help='Initial policy log-variance (natural log of variance)',
                         default=-1.0)
-    parser.add_argument('-vi', '--visualize', type=bool,
-                        help='Visualize the training (needs to off for sshing).',
+    #parser.add_argument('-vi', '--visualize', type=bool,
+    #                    help='Visualize the training (needs to off for sshing).',
+    #                    default=False)
+    parser.add_argument('-pr', '--print_results', type=bool,
+        help='Plot histogram of final policy',
+                        default=False)
+        parser.add_argument('-pi', '--picklee', type=bool,
+        help='Pickle list of final policy rewards for check_final.py',
                         default=False)
 
     args = parser.parse_args()
