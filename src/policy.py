@@ -220,6 +220,16 @@ class Policy(object):
             self.beta = np.maximum(1 / 35, self.beta / 1.5)  # min clip beta
             if self.beta < (1 / 30) and self.lr_multiplier < 10:
                 self.lr_multiplier *= 1.5
+        '''Window to keep memory, ideas a moving average (window length 23 a less than 1 percent of no rare event),
+        exponential smoothing (looks nicer but more things I need to tune), other ideas look into momentum'''
+        # window idea
+        #self.window.append(risk_metric)
+        #if len(self.window) > 20:
+        #    self.window.pop(0)
+        #test
+
+        '''Another idea keep vector of all past values and then take the risk metric with respect to that
+        big list is in train, though this might mean I punish future good policies for old bad ones''' 
         if risk_metric < self.risk_targ * 1.5:
             self.lamb *= 2
         elif risk_metric > self.risk_targ / 1.5:

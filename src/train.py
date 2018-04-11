@@ -355,6 +355,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     if print_results:
         rew_graph = np.array([])
         mean_rew_graph = np.array([])
+        big_li_rew_nodisc0 = []
     while episode < num_episodes:
         trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
@@ -365,11 +366,12 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         print('Discounted returns from state 0', disc0)
         rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
         print('Non discounted returns from state 0', rew_nodisc0)
+        big_li_rew_nodisc0.append(rew_nodisc0)
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, disc0, logger)  # update policy
+        policy.update(observes, actions, advantages, big_li_rew_nodisc0, logger)  # update policy
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         kl_terms = np.append(kl_terms,policy.check_kl)
