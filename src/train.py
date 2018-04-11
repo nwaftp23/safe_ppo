@@ -507,9 +507,6 @@ if __name__ == "__main__":
     parser.add_argument('-pr', '--print_results', type=bool,
         help='Plot histogram of final policy',
                         default=False)
-        parser.add_argument('-pi', '--picklee', type=bool,
-        help='Pickle list of final policy rewards for check_final.py',
-                        default=False)
 
     args = parser.parse_args()
     main(**vars(args))
