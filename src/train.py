@@ -138,7 +138,9 @@ def run_policy(env, policy, scaler, logger, episodes):
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
-    scaler.update(unscaled)  # update running statistics for scaling observations
+    rew = np.concatenate([t['rewards'] for t in trajectories])
+    scaler.update(unscaled, rew)  # update running statistics for scaling observations
+  # scaler.update(unscaled)  # update running statistics for scaling observations
     logger.log({'_MeanReward': np.mean([t['rewards'].sum() for t in trajectories]),
                 'Steps': total_steps})
 
@@ -150,7 +152,7 @@ def discount(x, gamma):
     return scipy.signal.lfilter([1.0], [1.0, -gamma], x[::-1])[::-1]
 
 
-def add_disc_sum_rew(trajectories, gamma):
+def add_disc_sum_rew(trajectories, gamma, mu, sig):
     """ Adds discounted sum of rewards to all time steps of all trajectories
 
     Args:
@@ -160,18 +162,19 @@ def add_disc_sum_rew(trajectories, gamma):
     Returns:
         None (mutates trajectories dictionary to add 'disc_sum_rew')
     """
-    #Ideas for new scaling, why using gamma. Just set
-	#a pre determined factor like 0.01, can tray a few
-	#also try a normalization like suggested in the paper
-    '''Original Scaling'''
-    #if gamma < 0.999:  # don't scale for gamma ~= 1
-    #    rewards = trajectory['rewards'] * (1 - gamma)
-    #else:
-    #    rewards = trajectory['rewards']
-    '''Standard deviation scaling'''
-    rewards = normalize_rew(trajectory, mu, sig)
-    disc_sum_rew = discount(rewards, gamma)
-    trajectory['disc_sum_rew'] = disc_sum_rew
+    for trajectory in trajectories:
+        #Ideas for new scaling, why using gamma. Just set
+	    #a pre determined factor like 0.01, can tray a few
+	    #also try a normalization like suggested in the paper
+        '''Original Scaling'''
+        #if gamma < 0.999:  # don't scale for gamma ~= 1
+        #    rewards = trajectory['rewards'] * (1 - gamma)
+        #else:
+        #    rewards = trajectory['rewards']
+        '''Standard deviation scaling'''
+        rewards = normalize_rew(trajectory, mu, sig)
+        disc_sum_rew = discount(rewards, gamma)
+        trajectory['disc_sum_rew'] = disc_sum_rew
 
 def normalize_rew(trajectory, mu, sig):
     if sig == 0:
@@ -215,7 +218,7 @@ def add_value(trajectories, val_func):
         trajectory['values'] = values
 
 
-def add_gae(trajectories, gamma, lam):
+def add_gae(trajectories, gamma, lam, mu, sig):
     """ Add generalized advantage estimator.
     https://arxiv.org/pdf/1506.02438.pdf
 
@@ -230,19 +233,21 @@ def add_gae(trajectories, gamma, lam):
     Returns:
         None (mutates trajectories dictionary to add 'advantages')
     """
-    # Lucas' correction
-    # try reward scaling suggested in the paper
-    '''Original Scaling'''
-    #if gamma < 0.999:  # don't scale for gamma ~= 1
-    #    rewards = trajectory['rewards'] * (1 - gamma)
-    #else:
-    #    rewards = trajectory['rewards']
-    '''standard deviation scaling'''
-    rewards = normalize_rew(trajectory, mu, sig)
-    # temporal differences
-    tds = rewards - values + np.append(values[1:] * gamma, 0)
-    advantages = discount(tds, gamma * lam)
-    trajectory['advantages'] = advantages
+    for trajectory in trajectories:
+        # Lucas' correction
+        # try reward scaling suggested in the paper
+        '''Original Scaling'''
+        #if gamma < 0.999:  # don't scale for gamma ~= 1
+        #    rewards = trajectory['rewards'] * (1 - gamma)
+        #else:
+        #    rewards = trajectory['rewards']
+        '''standard deviation scaling'''
+        rewards = normalize_rew(trajectory, mu, sig)
+        values = trajectory['values'] 
+        # temporal differences
+        tds = rewards - values + np.append(values[1:] * gamma, 0)
+        advantages = discount(tds, gamma * lam)
+        trajectory['advantages'] = advantages
 
 def VaR(disc_sum_rewards,threshold):
     """ Calculates the VaR of the discounted sum of returns.
@@ -314,7 +319,7 @@ def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode
                 })
 
 
-def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, print_results):
+def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, print_results, risk_targ):
     """ Main training loop
 
     Args:
