@@ -243,7 +243,7 @@ def add_gae(trajectories, gamma, lam, mu, sig):
         #    rewards = trajectory['rewards']
         '''standard deviation scaling'''
         rewards = normalize_rew(trajectory, mu, sig)
-        values = trajectory['values'] 
+        values = trajectory['values']
         # temporal differences
         tds = rewards - values + np.append(values[1:] * gamma, 0)
         advantages = discount(tds, gamma * lam)
@@ -290,7 +290,7 @@ def build_train_set(trajectories):
     advantages = np.concatenate([t['advantages'] for t in trajectories])
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
-    disc_sum_rew0 = np.array([t['disc_sum_rew_noscale'][0] for t in trajectories])
+    #disc_sum_rew0 = np.array([t['disc_sum_rew_noscale'][0] for t in trajectories])
     return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
 
 def get_end_policy_dist(policy, n):
