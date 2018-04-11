@@ -119,7 +119,7 @@ class Policy(object):
 
     def _risk_metric(self):
         if self.risk_option == 'VaR':
-            self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew,self.alpha)
+            self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
             cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
             self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew,cutoff))
@@ -211,7 +211,7 @@ class Policy(object):
                 break
 
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
-        print('kl is', kl)
+        print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
             self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
             if self.beta > 30 and self.lr_multiplier > 0.1:

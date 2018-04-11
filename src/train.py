@@ -337,7 +337,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     #env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'VaR', batch_size, 99)
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, episodes=5)
     episode = 0
@@ -490,7 +490,7 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default=0.003)
     parser.add_argument('-r', '--risk_targ', type=float, help='Risk target value or Constraint',
-                        default = -40)
+                        default = -500)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
                         default=20)
