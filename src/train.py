@@ -355,7 +355,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     if print_results:
         rew_graph = np.array([])
         mean_rew_graph = np.array([])
-        big_li_rew_nodisc0 = np.array([])
+    big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
         trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
@@ -363,9 +363,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
-        print('Discounted returns from state 0', disc0)
         rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
-        print('Non discounted returns from state 0', rew_nodisc0)
         big_li_rew_nodisc0= np.append(big_li_rew_nodisc0,rew_nodisc0)
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)

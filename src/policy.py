@@ -241,7 +241,7 @@ class Policy(object):
                     'KL': kl,
                     self.risk_option: risk_metric,
                     'Beta': self.beta,
-                    'lambda': self.lamb
+                    'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
 
     def close_sess(self):
