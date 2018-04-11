@@ -224,6 +224,7 @@ class Policy(object):
             self.lamb *= 2
         elif risk_metric > self.risk_targ / 1.5:
             self.lamb /= 2
+        self.check_kl = kl
 
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,

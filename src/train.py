@@ -25,6 +25,10 @@ This implementation learns policies for continuous environments
 in the OpenAI Gym (https://gym.openai.com/). Testing was focused on
 the MuJoCo control tasks.
 """
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import gym
 import numpy as np
 from gym import wrappers
@@ -291,7 +295,7 @@ def build_train_set(trajectories):
     # normalize advantages
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
     #disc_sum_rew0 = np.array([t['disc_sum_rew_noscale'][0] for t in trajectories])
-    return observes, actions, advantages, disc_sum_rew, disc_sum_rew0
+    return observes, actions, advantages, disc_sum_rew
 
 def get_end_policy_dist(policy, n):
     run_policy(env, policy, scaler, logger, episodes=n)
@@ -362,7 +366,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, logger)  # update policy
+        policy.update(observes, actions, advantages, disc_sum_rew, logger)  # update policy
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         kl_terms = np.append(kl_terms,policy.check_kl)
