@@ -481,7 +481,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
                                                   'using Proximal Policy Optimizer'))
-    parser.add_argument('env_name', type=str, help='OpenAI Gym environment name')
+    parser.add_argument('-e','--env_name', type=str, help='OpenAI Gym environment name', default = 'OptimalStop-v0')
     parser.add_argument('-n', '--num_episodes', type=int, help='Number of episodes to run',
                         default=2000)
     parser.add_argument('-g', '--gamma', type=float, help='Discount factor', default=0.9995)
