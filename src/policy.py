@@ -181,7 +181,7 @@ class Policy(object):
 
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
-    def update(self, observes, actions, advantages, disc_sum_rew, logger):
+    def update(self, observes, actions, advantages, li_rew, logger):
         """ Update policy based on observations, actions and advantages
 
         Args:
@@ -197,7 +197,7 @@ class Policy(object):
                      self.eta_ph: self.eta,
                      self.lamb_ph: self.lamb,
                      self.lr_ph: self.lr * self.lr_multiplier,
-                     self.disc_sum_rew: disc_sum_rew}
+                     self.disc_sum_rew: li_rew}
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
@@ -229,7 +229,7 @@ class Policy(object):
         #test
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
-        big list is in train, though this might mean I punish future good policies for old bad ones''' 
+        big list is in train, though this might mean I punish future good policies for old bad ones'''
         if risk_metric < self.risk_targ * 1.5:
             self.lamb *= 2
         elif risk_metric > self.risk_targ / 1.5:
