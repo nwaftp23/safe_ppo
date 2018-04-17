@@ -41,6 +41,7 @@ import os
 import argparse
 import signal
 import Optimal_Stop
+import pickle
 
 class GracefulKiller:
     """ Gracefully exit program on CTRL-C """
@@ -72,7 +73,14 @@ def init_gym(env_name):
     return env, obs_dim, act_dim
 
 
-def run_episode(env, policy, scaler, animate=False):
+''' Add Augmented state space to then implement a similar scenario to 
+Yinlam Chow. Might or might not work. Other ideas not yet tested, leverage
+our critic in our estimation of risk parameter, build a seperate risk net, 
+or increase the batch to ensure rare event encounter. Some methods can be 
+combined together.'''
+
+
+def run_episode(env, policy, scaler, init_var, gamma, animate = False):
     """ Run single episode with option to animate
 
     Args:
@@ -99,7 +107,11 @@ def run_episode(env, policy, scaler, animate=False):
         if animate:
             env.render()
         obs = obs.astype(np.float32).reshape((1, -1))
-        obs = np.append(obs, [[step]], axis=1)  # add time step feature
+        if step == 0:
+            augie = init_var
+        else:
+            augie -= (reward/gamma)
+        obs = np.append(obs, [[augie ,step]], axis=1)  # add time step feature
         unscaled_obs.append(obs)
         obs = (obs - offset) * scale  # center and scale observations
         observes.append(obs)
@@ -114,7 +126,7 @@ def run_episode(env, policy, scaler, animate=False):
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
 
-def run_policy(env, policy, scaler, logger, episodes):
+def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
     """ Run policy and collect data for a minimum of min_steps and min_episodes
 
     Args:
@@ -134,7 +146,7 @@ def run_policy(env, policy, scaler, logger, episodes):
     total_steps = 0
     trajectories = []
     for e in range(episodes):
-        observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler)
+        observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler, init_var, gamma)
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
@@ -298,7 +310,7 @@ def build_train_set(trajectories):
     return observes, actions, advantages, disc_sum_rew
 
 def get_end_policy_dist(policy, n):
-    run_policy(env, policy, scaler, logger, episodes=n)
+    run_policy(env, policy, scaler, logger, init_var, gamma, episodes=n)
 
 
 def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode):
@@ -336,6 +348,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         hid1_mult: hid1 size for policy and value_f (mutliplier of obs dimension)
         policy_logvar: natural log of initial policy variance
     """
+    init_var = - 100
     killer = GracefulKiller()
     env, obs_dim, act_dim = init_gym(env_name)
     obs_dim += 1  # add 1 to obs dimension for time step feature (see run_episode())
@@ -348,7 +361,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     val_func = NNValueFunction(obs_dim, hid1_mult)
     policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'VaR', batch_size, 1)
     # run a few episodes of untrained policy to initialize scaler:
-    run_policy(env, policy, scaler, logger, episodes=5)
+    run_policy(env, policy, scaler, logger, init_var, gamma, episodes=5)
     episode = 0
     kl_terms = np.array([])
     beta_terms = np.array([])
@@ -357,7 +370,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         mean_rew_graph = np.array([])
     big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
-        trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
+        trajectories = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=batch_size)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
@@ -412,7 +425,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             plt.savefig("learning_curve2.png")
             plt.close()
     if print_results:
-        tr = run_policy(env, policy, scaler, logger, episodes=1000)
+        tr = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=1000)
         sum_rewww = [t['rewards'].sum() for t in tr]
         hist_dat = np.array(sum_rewww)
         fig = plt.hist(hist_dat,bins=2000, edgecolor='b', linewidth=1.2)

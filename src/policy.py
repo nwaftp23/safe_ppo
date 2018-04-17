@@ -51,7 +51,7 @@ class Policy(object):
     def _placeholders(self):
         """ Input placeholders"""
         # observations, actions and advantages:
-        self.obs_ph = tf.placeholder(tf.float32, (None, self.obs_dim), 'obs')
+        self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim+1)), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
         self.disc_sum_rew = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
@@ -165,8 +165,11 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         # loss 4 Risk Metric
-        loss4 = self.lamb_ph*self.risk
-        self.loss = loss1 + loss2 + loss3 + loss4
+        #loss4 = self.lamb_ph*self.risk
+        #print('risk metric loss', loss4)
+        # for augie just use augmented MDP instead of estimate of risk metric
+        # which was stupid, but could work better if leverage machinery
+        self.loss = loss1 + loss2 + loss3 #+ loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
 
@@ -206,12 +209,13 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
+            # loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
+            loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
 
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
-        print('risk_metric is', risk_metric)
+        #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
             self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
             if self.beta > 30 and self.lr_multiplier > 0.1:
@@ -230,16 +234,17 @@ class Policy(object):
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
         big list is in train, though this might mean I punish future good policies for old bad ones'''
-        if risk_metric < self.risk_targ * 1.5:
-            self.lamb *= 2
-        elif risk_metric > self.risk_targ / 1.5:
-            self.lamb /= 2
-        self.check_kl = kl
+        #if risk_metric < self.risk_targ * 1.5:
+        #    self.lamb *= 2
+        #elif risk_metric > self.risk_targ / 1.5:
+        #    self.lamb /= 2
+        #self.check_kl = kl
 
+        self.check_kl = kl
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
                     'KL': kl,
-                    self.risk_option: risk_metric,
+                    #self.risk_option: risk_metric,
                     'Beta': self.beta,
                     'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
