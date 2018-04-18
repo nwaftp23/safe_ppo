@@ -441,66 +441,6 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     policy.close_sess()
     val_func.close_sess()
 
-'''def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, policy_logvar, visualize, risk_targ):
-    """ Main training loop
-
-    Args:
-        env_name: OpenAI Gym environment name, e.g. 'Hopper-v1'
-        num_episodes: maximum number of episodes to run
-        gamma: reward discount factor (float)
-        lam: lambda from Generalized Advantage Estimate
-        kl_targ: D_KL target for policy update [D_KL(pi_old || pi_new)
-        batch_size: number of episodes per policy training batch
-        hid1_mult: hid1 size for policy and value_f (mutliplier of obs dimension)
-        policy_logvar: natural log of initial policy variance
-    """
-    killer = GracefulKiller()
-    env, obs_dim, act_dim = init_gym(env_name)
-    obs_dim += 1  # add 1 to obs dimension for time step feature (see run_episode())
-    now = datetime.utcnow().strftime("%b-%d_%H:%M:%S")  # create unique directories
-    logger = Logger(logname=env_name, now=now)
-    aigym_path = os.path.join('/tmp', env_name, now)
-    # Visualize of env
-    # needs to off when sshing into raza
-    if visualize:
-        env = wrappers.Monitor(env, aigym_path, force=True)
-    scaler = Scaler(obs_dim)
-    val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar,risk_targ,'VaR',batch_size, 95)
-    # run a few episodes of untrained policy to initialize scaler:
-    run_policy(env, policy, scaler, logger, episodes=5)
-    episode = 0
-    while episode < num_episodes:
-        trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
-        episode += len(trajectories)
-        add_value(trajectories, val_func)  # add estimated values to episodes
-        add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
-        add_disc_sum_rew_noscale(trajectories, gamma)  # calculated discounted sum of Rs not scale
-        add_gae(trajectories, gamma, lam)  # calculate advantage
-        # concatenate all episodes into single NumPy arrays
-        observes, actions, advantages, disc_sum_rew, disc_sum_rew0  = build_train_set(trajectories)
-        # add various stats to training log:
-        log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, disc_sum_rew0, logger)  # update policy
-        val_func.fit(observes, disc_sum_rew, logger)  # update value function
-        logger.write(display=True)  # write logger results to file and stdout
-        if killer.kill_now:
-            if input('Terminate training (y/[n])? ') == 'y':
-                break
-            killer.kill_now = False
-    tr = run_policy(env, policy, scaler, logger, episodes=100)
-    sum_rewww = [t['rewards'].sum() for t in tr]
-    hist_dat = np.array(sum_rewww)
-    fig = plt.hist(hist_dat)
-    plt.title('Standard PPO')
-    plt.xlabel("Sum of Rewards")
-    plt.ylabel("Frequency")
-    plt.savefig("RA_ppo.png")
-    plt.close(fig)
-    logger.close()
-    policy.close_sess()
-    val_func.close_sess()
-'''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
