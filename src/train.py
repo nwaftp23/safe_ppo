@@ -123,7 +123,7 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-    new_var = minimize_scalar(f, init_var,bounds=(-2000000,2000000))
+    new_var = minimize_scalar(f, bounds=(-2000000,2000000), method = 'bounded')
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
 
