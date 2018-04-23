@@ -37,6 +37,7 @@ from value_function import NNValueFunction
 import scipy.signal
 from utils import Logger, Scaler
 from datetime import datetime
+from scipy.optimize import minimize
 import os
 import argparse
 import signal
@@ -110,7 +111,7 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
         if step == 0:
             augie = init_var
         else:
-            augie -= (reward/gamma)
+            augie += (reward/gamma)
         obs = np.append(obs, [[augie ,step]], axis=1)  # add time step feature
         unscaled_obs.append(obs)
         obs = (obs - offset) * scale  # center and scale observations
@@ -122,8 +123,15 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
+    new_var = minimize(f,bounds=(-2000000,-2000000))
     return (np.concatenate(observes), np.concatenate(actions),
-            np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
+            np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
+
+def f(x_new):
+    indicator = int(augie<=0)
+    _ = init_var - step_size3*(lambda_k - lambda_k/(1-alpha)*indicator)
+    return (x_new - _)**2
+
 
 
 def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
@@ -146,13 +154,14 @@ def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
     total_steps = 0
     trajectories = []
     for e in range(episodes):
-        observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler, init_var, gamma)
+        observes, actions, rewards, unscaled_obs, new_var = run_episode(env, policy, scaler, init_var, gamma)
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
                       'rewards': rewards,
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
+        init_var = new_var
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
     rew = np.concatenate([t['rewards'] for t in trajectories])
     scaler.update(unscaled, rew)  # update running statistics for scaling observations
@@ -160,7 +169,7 @@ def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
     logger.log({'_MeanReward': np.mean([t['rewards'].sum() for t in trajectories]),
                 'Steps': total_steps})
 
-    return trajectories
+    return trajectories , init_var
 
 
 def discount(x, gamma):
@@ -370,11 +379,12 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         mean_rew_graph = np.array([])
     big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
-        trajectories = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=batch_size)
+        trajectories, init_var = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=batch_size)
+        print(init_var)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         predicted_values_0 = [t['values'][0] for t in trajectories]
-        print(predicted_values_0) 
+        print(predicted_values_0)
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
@@ -388,8 +398,6 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         kl_terms = np.append(kl_terms,policy.check_kl)
-        if (episode % 20) == 0:
-            print('Running standard deviation after last mini batch is', scaler.var_rew)
         x1 = list(range(1,(len(kl_terms)+1)))
         rewards = plt.plot(x1,kl_terms)
         plt.title('RAPPO')
