@@ -123,12 +123,13 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-    new_var = minimize(f,bounds=(-2000000,-2000000))
+    new_var = minimize(f, init_var,bounds=(-2000000,-2000000))
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
 
 def f(x_new):
     indicator = int(augie<=0)
+    step_size3 = 0.01
     _ = init_var - step_size3*(lambda_k - lambda_k/(1-alpha)*indicator)
     return (x_new - _)**2
 
