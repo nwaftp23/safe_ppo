@@ -37,7 +37,7 @@ from value_function import NNValueFunction
 import scipy.signal
 from utils import Logger, Scaler
 from datetime import datetime
-from scipy.optimize import minimize
+from scipy.optimize import minimize_scalar
 import os
 import argparse
 import signal
@@ -123,7 +123,7 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-    new_var = minimize(f, init_var,bounds=(-2000000,2000000))
+    new_var = minimize_scalar(f, init_var,bounds=(-2000000,2000000))
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
 
@@ -163,6 +163,7 @@ def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
         init_var = new_var
+        print('Var', new_var, 'at episode', e)
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
     rew = np.concatenate([t['rewards'] for t in trajectories])
     scaler.update(unscaled, rew)  # update running statistics for scaling observations
