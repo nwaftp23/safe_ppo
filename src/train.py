@@ -81,7 +81,7 @@ or increase the batch to ensure rare event encounter. Some methods can be
 combined together.'''
 
 
-def run_episode(env, policy, scaler, init_var, gamma, animate = False):
+def run_episode(env, policy, scaler, init_var, gamma, animate = False, alpha, lambda_k):
     """ Run single episode with option to animate
 
     Args:
@@ -123,11 +123,11 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False):
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-    new_var = minimize_scalar(f, bounds=(-2000000,2000000), method = 'bounded')
+    new_var = minimize_scalar(f, args = (augie, init_var, lambda_k, alpha), bounds=(-2000000,2000000), method = 'bounded')
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
 
-def f(x_new):
+def f(x_new, augie, init_var, lambda_k, alpha):
     indicator = int(augie<=0)
     step_size3 = 0.01
     _ = init_var - step_size3*(lambda_k - lambda_k/(1-alpha)*indicator)
@@ -135,7 +135,7 @@ def f(x_new):
 
 
 
-def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
+def run_policy(env, policy, scaler, logger, init_var, gamma, episodes, alpha, lambda_k):
     """ Run policy and collect data for a minimum of min_steps and min_episodes
 
     Args:
@@ -155,7 +155,7 @@ def run_policy(env, policy, scaler, logger, init_var, gamma, episodes):
     total_steps = 0
     trajectories = []
     for e in range(episodes):
-        observes, actions, rewards, unscaled_obs, new_var = run_episode(env, policy, scaler, init_var, gamma)
+        observes, actions, rewards, unscaled_obs, new_var = run_episode(env, policy, scaler, init_var, gamma, alpha, lambda_k)
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
