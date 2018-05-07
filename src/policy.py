@@ -236,7 +236,7 @@ class Policy(object):
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
         big list is in train, though this might mean I punish future good policies for old bad ones'''
-        if risk_metric < self.risk_targ * 1.5:
+        if risk_metric > self.risk_targ * 1.5:
             self.lamb *= 2
         #elif risk_metric > self.risk_targ / 1.5:
             #self.lamb /= 2

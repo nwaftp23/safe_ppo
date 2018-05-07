@@ -551,7 +551,7 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default=0.003)
     parser.add_argument('-r', '--risk_targ', type=float, help='Risk target value or Constraint',
-                        default = -500)
+                        default = 340)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
                         default=50)
