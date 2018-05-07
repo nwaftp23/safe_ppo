@@ -170,7 +170,7 @@ class Policy(object):
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
-        self.loss = loss1 + loss2 + loss3 + loss4
+        self.loss = loss1 + loss2 + loss3 #+ loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
 
@@ -214,7 +214,8 @@ class Policy(object):
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
-
+            print('loss is', loss)
+            print('risk metric is', risk_metric)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
