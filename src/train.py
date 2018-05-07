@@ -473,13 +473,14 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
-        rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
-        big_li_rew_nodisc0= np.append(big_li_rew_nodisc0,rew_nodisc0)
+        #### WINDOW ####
+        #rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
+        #big_li_rew_nodisc0= np.append(big_li_rew_nodisc0,rew_nodisc0)
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        lamb, risky = policy.update(observes, actions, advantages, big_li_rew_nodisc0, logger)  # update policy
+        lamb, risky = policy.update(observes, actions, advantages, disc0, logger)  # update policy
         print('Risk Lagrange multiplier is', lamb, 'and risk metric is', risky)
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
