@@ -249,8 +249,6 @@ def run_policy(env, policy, scaler, logger, episodes):
                       'rewards': rewards,
                       'unscaled_obs': unscaled_obs}
         trajectories.append(trajectory)
-        init_var = new_var
-        print('Var', new_var, 'at episode', e)
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
     rew = np.concatenate([t['rewards'] for t in trajectories])
     scaler.update(unscaled, rew)  # update running statistics for scaling observations
@@ -409,7 +407,7 @@ def build_train_set(trajectories):
     return observes, actions, advantages, disc_sum_rew
 
 def get_end_policy_dist(policy, n):
-    run_policy(env, policy, scaler, logger, init_var, gamma, episodes=n)
+    run_policy(env, policy, scaler, logger, episodes=n)
 
 
 def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode):
@@ -459,7 +457,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     val_func = NNValueFunction(obs_dim, hid1_mult)
     policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'CVaR', batch_size, 1)
     # run a few episodes of untrained policy to initialize scaler:
-    run_policy(env, policy, scaler, logger, init_var, gamma, episodes=5)
+    run_policy(env, policy, scaler, logger, episodes=5)
     episode = 0
     kl_terms = np.array([])
     beta_terms = np.array([])
@@ -468,7 +466,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         mean_rew_graph = np.array([])
     big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
-        trajectories, init_var = run_policy(env, policy, scaler, logger, episodes=batch_size)
+        trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         predicted_values_0 = [t['values'][0] for t in trajectories]
@@ -523,7 +521,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
             plt.savefig("learning_curve2.png")
             plt.close()
     if print_results:
-        tr = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=1000)
+        tr = run_policy(env, policy, scaler, logger, episodes=1000)
         sum_rewww = [t['rewards'].sum() for t in tr]
         hist_dat = np.array(sum_rewww)
         fig = plt.hist(hist_dat,bins=2000, edgecolor='b', linewidth=1.2)
