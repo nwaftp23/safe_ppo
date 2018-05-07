@@ -52,7 +52,7 @@ class Policy(object):
     def _placeholders(self):
         """ Input placeholders"""
         # observations, actions and advantages:
-        self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim+1)), 'obs')
+        self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim)), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
         self.disc_sum_rew = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
