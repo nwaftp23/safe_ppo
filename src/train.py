@@ -242,7 +242,7 @@ def run_policy(env, policy, scaler, logger, episodes):
     total_steps = 0
     trajectories = []
     for e in range(episodes):
-        observes, actions, rewards, unscaled_obs, new_var = run_episode(env, policy, scaler)
+        observes, actions, rewards, unscaled_obs = run_episode(env, policy, scaler)
         total_steps += observes.shape[0]
         trajectory = {'observes': observes,
                       'actions': actions,
