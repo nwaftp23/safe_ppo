@@ -98,7 +98,7 @@ class Policy(object):
         log_vars = tf.get_variable('logvars', (logvar_speed, self.act_dim), tf.float32,
                                    tf.constant_initializer(0.0))
         self.log_vars = tf.reduce_sum(log_vars, axis=0) + self.policy_logvar
-        
+
         print('Policy Params -- h1: {}, h2: {}, h3: {}, lr: {:.3g}, logvar_speed: {}'
               .format(hid1_size, hid2_size, hid3_size, self.lr, logvar_speed))
 
