@@ -464,14 +464,16 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     if print_results:
         rew_graph = np.array([])
         mean_rew_graph = np.array([])
-    big_li_rew_nodisc0 = np.array([])
+    #big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
         trajectories = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
-        predicted_values_0 = [t['values'][0] for t in trajectories]
+        #predicted_values_0 = [t['values'][0] for t in trajectories]
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
+        nodisc0 = [t['rewards'].sum() for t in tr]
+        print(nodisc0)
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
         #### WINDOW ####
         #rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
@@ -480,7 +482,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        lamb, risky = policy.update(observes, actions, advantages, disc0, logger)  # update policy
+        lamb, risky = policy.update(observes, actions, advantages, nodisc0, logger)  # update policy
         print('Risk Lagrange multiplier is', lamb, 'and risk metric is', risky)
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
