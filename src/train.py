@@ -208,7 +208,6 @@ def run_episode(env, policy, scaler, animate = False):
         obs = obs.astype(np.float32).reshape((1, -1))
         obs = np.append(obs, [[step]], axis=1)  # add time step feature
         unscaled_obs.append(obs)
-        print('obs', obs,'offset', offset,'scale',scale)
         obs = (obs - offset) * scale  # center and scale observations
         observes.append(obs)
         action = policy.sample(obs).reshape((1, -1)).astype(np.float32)

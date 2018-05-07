@@ -22,8 +22,8 @@ class Scaler(object):
         Args:
             obs_dim: dimension of axis=1
         """
-        self.varss = np.zeros(obs_dim+1) # added plus 1 for augmented state space
-        self.means = np.zeros(obs_dim+1) # added plus 1 for augmented state space
+        self.varss = np.zeros(obs_dim)#+1) # added plus 1 for augmented state space
+        self.means = np.zeros(obs_dim)#+1) # added plus 1 for augmented state space
         self.mean_rew = 0
         self.var_rew = 0
         self.n = 0
