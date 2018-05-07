@@ -80,7 +80,10 @@ our critic in our estimation of risk parameter, build a seperate risk net,
 or increase the batch to ensure rare event encounter. Some methods can be
 combined together.'''
 
+'''
 
+This section of code was commented out because it was the augmented MDP trial
+Now I going with the simpler approach which should work
 def run_episode(env, policy, scaler, init_var, gamma, animate = False, alpha, lambda_k):
     """ Run single episode with option to animate
 
@@ -172,6 +175,91 @@ def run_policy(env, policy, scaler, logger, init_var, gamma, episodes, alpha, la
                 'Steps': total_steps})
 
     return trajectories , init_var
+'''
+
+
+
+def run_episode(env, policy, scaler, animate = False):
+    """ Run single episode with option to animate
+
+    Args:
+        env: ai gym environment
+        policy: policy object with sample() method
+        scaler: scaler object, used to scale/offset each observation dimension
+            to a similar range
+        animate: boolean, True uses env.render() method to animate episode
+
+    Returns: 4-tuple of NumPy arrays
+        observes: shape = (episode len, obs_dim)
+        actions: shape = (episode len, act_dim)
+        rewards: shape = (episode len,)
+        unscaled_obs: useful for training scaler, shape = (episode len, obs_dim)
+    """
+    obs = env.reset()
+    observes, actions, rewards, unscaled_obs = [], [], [], []
+    done = False
+    step = 0.0
+    scale, offset = scaler.get()
+    scale[-1] = 1.0  # don't scale time step feature
+    offset[-1] = 0.0  # don't offset time step feature
+    while not done:
+        if animate:
+            env.render()
+        obs = obs.astype(np.float32).reshape((1, -1))
+        obs = np.append(obs, [[step]], axis=1)  # add time step feature
+        unscaled_obs.append(obs)
+        obs = (obs - offset) * scale  # center and scale observations
+        observes.append(obs)
+        action = policy.sample(obs).reshape((1, -1)).astype(np.float32)
+        actions.append(action)
+        obs, reward, done, _ = env.step(np.squeeze(action, axis=0))
+        if not isinstance(reward, float):
+            reward = np.asscalar(reward)
+        rewards.append(reward)
+        step += 1e-3  # increment time step feature
+    return (np.concatenate(observes), np.concatenate(actions),
+            np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
+
+
+
+def run_policy(env, policy, scaler, logger, episodes):
+    """ Run policy and collect data for a minimum of min_steps and min_episodes
+
+    Args:
+        env: ai gym environment
+        policy: policy object with sample() method
+        scaler: scaler object, used to scale/offset each observation dimension
+            to a similar range
+        logger: logger object, used to save stats from episodes
+        episodes: total episodes to run
+
+    Returns: list of trajectory dictionaries, list length = number of episodes
+        'observes' : NumPy array of states from episode
+        'actions' : NumPy array of actions from episode
+        'rewards' : NumPy array of (un-discounted) rewards from episode
+        'unscaled_obs' : NumPy array of (un-discounted) rewards from episode
+    """
+    total_steps = 0
+    trajectories = []
+    for e in range(episodes):
+        observes, actions, rewards, unscaled_obs, new_var = run_episode(env, policy, scaler)
+        total_steps += observes.shape[0]
+        trajectory = {'observes': observes,
+                      'actions': actions,
+                      'rewards': rewards,
+                      'unscaled_obs': unscaled_obs}
+        trajectories.append(trajectory)
+        init_var = new_var
+        print('Var', new_var, 'at episode', e)
+    unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
+    rew = np.concatenate([t['rewards'] for t in trajectories])
+    scaler.update(unscaled, rew)  # update running statistics for scaling observations
+  # scaler.update(unscaled)  # update running statistics for scaling observations
+    logger.log({'_MeanReward': np.mean([t['rewards'].sum() for t in trajectories]),
+                'Steps': total_steps})
+
+    return trajectories
+
 
 
 def discount(x, gamma):
@@ -359,7 +447,6 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         hid1_mult: hid1 size for policy and value_f (mutliplier of obs dimension)
         policy_logvar: natural log of initial policy variance
     """
-    init_var = - 100
     killer = GracefulKiller()
     env, obs_dim, act_dim = init_gym(env_name)
     obs_dim += 1  # add 1 to obs dimension for time step feature (see run_episode())
@@ -370,7 +457,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     #env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'VaR', batch_size, 1)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'CVaR', batch_size, 1)
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, init_var, gamma, episodes=5)
     episode = 0
@@ -381,12 +468,10 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         mean_rew_graph = np.array([])
     big_li_rew_nodisc0 = np.array([])
     while episode < num_episodes:
-        trajectories, init_var = run_policy(env, policy, scaler, logger,  init_var, gamma, episodes=batch_size)
-        print(init_var)
+        trajectories, init_var = run_policy(env, policy, scaler, logger, episodes=batch_size)
         episode += len(trajectories)
         add_value(trajectories, val_func)  # add estimated values to episodes
         predicted_values_0 = [t['values'][0] for t in trajectories]
-        print(predicted_values_0)
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
@@ -396,7 +481,8 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        policy.update(observes, actions, advantages, big_li_rew_nodisc0, logger)  # update policy
+        lamb, risky = policy.update(observes, actions, advantages, big_li_rew_nodisc0, logger)  # update policy
+        print('Risk Lagrange multiplier is,' lamb, 'and risk metric is', risky)
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         kl_terms = np.append(kl_terms,policy.check_kl)

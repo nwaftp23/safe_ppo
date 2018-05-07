@@ -210,8 +210,8 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            # loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
-            loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
+            loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
+            # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
 
@@ -235,20 +235,21 @@ class Policy(object):
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
         big list is in train, though this might mean I punish future good policies for old bad ones'''
-        #if risk_metric < self.risk_targ * 1.5:
-        #    self.lamb *= 2
+        if risk_metric < self.risk_targ * 1.5:
+            self.lamb *= 2
         #elif risk_metric > self.risk_targ / 1.5:
-        #    self.lamb /= 2
+            #self.lamb /= 2
         #self.check_kl = kl
 
         self.check_kl = kl
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
                     'KL': kl,
-                    #self.risk_option: risk_metric,
+                    self.risk_option: risk_metric,
                     'Beta': self.beta,
                     'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
+        return self.lamb, risk_metric 
 
     def close_sess(self):
         """ Close TensorFlow session """
