@@ -555,7 +555,7 @@ if __name__ == "__main__":
                         default = -500)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
-                        default=20)
+                        default=50)
     parser.add_argument('-m', '--hid1_mult', type=int,
                         help='Size of first hidden layer for value and policy NNs'
                              '(integer multiplier of observation dimension)',

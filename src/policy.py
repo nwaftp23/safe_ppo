@@ -27,7 +27,7 @@ class Policy(object):
         self.risk_option = risk_option
         self.hid1_mult = hid1_mult
         self.policy_logvar = policy_logvar
-        self.batch_size = 20
+        self.batch_size = batch_size
         self.epochs = 20
         self.lr = None
         self.lr_multiplier = 1.0  # dynamically adjust lr when D_KL out of control
@@ -123,8 +123,8 @@ class Policy(object):
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
-            cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
-            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew,cutoff))
+            #cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
+            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, 1 ))
 
 
     def _kl_entropy(self):
