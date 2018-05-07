@@ -125,7 +125,7 @@ class Policy(object):
         elif self.risk_option == 'CVaR':
             #cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
             #self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, 1 ))
-            self.risk = tf.reduce_min(self.disc_sum_rew)
+            self.risk = -1*tf.reduce_min(self.disc_sum_rew)
 
     def _kl_entropy(self):
         """
@@ -166,12 +166,12 @@ class Policy(object):
                                 tf.exp(self.logp - self.logp_old))
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
-        # loss 4 Risk Metric
-        #loss4 = self.lamb_ph*self.risk
+        #loss 4 Risk Metric
+        loss4 = self.lamb_ph*self.risk
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
-        self.loss = loss1 + loss2 + loss3 #+ loss4
+        self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
         self.train_op = optimizer.minimize(self.loss)
 
