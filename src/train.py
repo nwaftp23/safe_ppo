@@ -472,7 +472,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         #predicted_values_0 = [t['values'][0] for t in trajectories]
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
-        nodisc0 = [t['rewards'].sum() for t in tr]
+        nodisc0 = [t['rewards'].sum() for t in trajectories]
         print(nodisc0)
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
         #### WINDOW ####
@@ -556,7 +556,7 @@ if __name__ == "__main__":
                         default = 340)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
-                        default=50)
+                        default=20)
     parser.add_argument('-m', '--hid1_mult', type=int,
                         help='Size of first hidden layer for value and policy NNs'
                              '(integer multiplier of observation dimension)',
