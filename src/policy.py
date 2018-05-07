@@ -27,6 +27,7 @@ class Policy(object):
         self.risk_option = risk_option
         self.hid1_mult = hid1_mult
         self.policy_logvar = policy_logvar
+        self.batch_size = 20
         self.epochs = 20
         self.lr = None
         self.lr_multiplier = 1.0  # dynamically adjust lr when D_KL out of control
@@ -249,7 +250,7 @@ class Policy(object):
                     'Beta': self.beta,
                     'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
-        return self.lamb, risk_metric 
+        return self.lamb, risk_metric
 
     def close_sess(self):
         """ Close TensorFlow session """
