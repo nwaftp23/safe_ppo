@@ -122,8 +122,8 @@ class Policy(object):
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
-            #cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
-            self.risk = tf.nn.top_k(self.disc_sum_rew, 2)
+            cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
+            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, cutoff)[0])
             #self.risk = -1*tf.reduce_min(self.disc_sum_rew)
 
     def _kl_entropy(self):
