@@ -122,9 +122,8 @@ class Policy(object):
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
-            cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
+            cutoff = np.ceil(self.batch_size * (self.alpha/100))
             self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, cutoff)[0])
-            self.check = tf.nn.top_k(self.disc_sum_rew, cutoff)
             self.check2 = tf.nn.top_k(self.disc_sum_rew, cutoff)[0]
             #self.risk = -1*tf.reduce_min(self.disc_sum_rew)
 
@@ -216,13 +215,13 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric, check, check2 = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.check, self.check2], feed_dict)
+            loss, kl, entropy, risk_metric, check2 = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.check2], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
         print('loss is', loss)
         print('risk metric is', risk_metric)
-        print('top k values', check, 'just top array no indexing', check2)
+        print('top k values', check2)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
