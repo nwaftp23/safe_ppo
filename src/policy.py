@@ -219,7 +219,6 @@ class Policy(object):
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
-        print('loss is', loss)
         print('risk metric is', risk_metric)
         print('top k values', check2)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
