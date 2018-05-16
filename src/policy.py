@@ -167,7 +167,7 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         #loss 4 Risk Metric
-        loss4 = self.lamb_ph*self.risk
+        #loss4 = self.lamb_ph*self.risk
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
@@ -208,9 +208,9 @@ class Policy(object):
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
         feed_dict[self.old_means_ph] = old_means_np
         loss, kl, entropy = 0, 0, 0
-        writer = tf.summary.FileWriter('1')
-        writer.add_graph(sess.graph)
-        input('pause to check tensorlfow graph')
+        #writer = tf.summary.FileWriter('1')
+        #writer.add_graph(sess.graph)
+        #input('pause to check tensorlfow graph')
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
