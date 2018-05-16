@@ -55,7 +55,7 @@ class Policy(object):
         self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim)), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
-        self.disc_sum_rew = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
+        self.disc_sum_rew = tf.placeholder(tf.float32, shape=None, 'discounted_sum_rewards')
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
