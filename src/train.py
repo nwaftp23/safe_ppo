@@ -455,7 +455,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
     #env = wrappers.Monitor(env, aigym_path, force=True)
     scaler = Scaler(obs_dim)
     val_func = NNValueFunction(obs_dim, hid1_mult)
-    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'CVaR', batch_size, 1)
+    policy = Policy(obs_dim, act_dim, kl_targ, hid1_mult, policy_logvar, risk_targ,'CVaR', batch_size, 5)
     # run a few episodes of untrained policy to initialize scaler:
     run_policy(env, policy, scaler, logger, episodes=5)
     episode = 0
@@ -473,7 +473,6 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         nodisc0 = [t['rewards'].sum() for t in trajectories]
-        print(nodisc0)
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
         #### WINDOW ####
         #rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
@@ -556,7 +555,7 @@ if __name__ == "__main__":
                         default = 340)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
-                        default=300)
+                        default=40)
     parser.add_argument('-m', '--hid1_mult', type=int,
                         help='Size of first hidden layer for value and policy NNs'
                              '(integer multiplier of observation dimension)',
