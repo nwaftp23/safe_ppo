@@ -98,7 +98,7 @@ class Policy(object):
         log_vars = tf.get_variable('logvars', (logvar_speed, self.act_dim), tf.float32,
                                    tf.constant_initializer(0.0))
         self.log_vars = tf.reduce_sum(log_vars, axis=0) + self.policy_logvar
-        
+
         print('Policy Params -- h1: {}, h2: {}, h3: {}, lr: {:.3g}, logvar_speed: {}'
               .format(hid1_size, hid2_size, hid3_size, self.lr, logvar_speed))
 
@@ -207,6 +207,9 @@ class Policy(object):
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
         feed_dict[self.old_means_ph] = old_means_np
         loss, kl, entropy = 0, 0, 0
+        writer = tf.summary.FileWriter('1')
+        writer.add_graph(sess.graph)
+        input('pause to check tensorlfow graph')
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
