@@ -20,7 +20,7 @@ class Policy(object):
         """
         self.beta = 1.0  # dynamically adjusted D_KL loss multiplier
         self.eta = 50  # multiplier for D_KL-kl_targ hinge-squared loss
-        self.lamb = 1.0 # multiplier for risk penalty
+        self.lamb = 0.01 # multiplier for risk penalty
         self.alpha = alpha # size of tail
         self.kl_targ = kl_targ
         self.risk_targ = risk_targ
@@ -92,6 +92,7 @@ class Policy(object):
         self.means = tf.layers.dense(out, self.act_dim,
                                      kernel_initializer=tf.random_normal_initializer(
                                          stddev=np.sqrt(1 / hid3_size)), name="means")
+        self.Value_risk = tf.Variable(tf.random_normal([1],300,50), dtype=tf.float32, name= 'VaR') 
         # logvar_speed is used to 'fool' gradient descent into making faster updates
         # to log-variances. heuristic sets logvar_speed based on network size.
         logvar_speed = (10 * hid3_size) // 48
@@ -122,9 +123,14 @@ class Policy(object):
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
-            cutoff = np.ceil(self.batch_size * (self.alpha/100))
-            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, cutoff)[0])
-            self.check2 = tf.nn.top_k(self.disc_sum_rew, cutoff)[0]
+            #cutoff = np.ceil(self.batch_size * (self.alpha/100))
+            perc = 1 - self.alpha/100 # Defined alpha wrong I had to redefine it, alpha not tail but everything before it
+            diff = tf.reshape((self.disc_sum_rew-self.Value_risk),[self.batch_size, 1])
+            ze = np.zeros((self.batch_size,1))
+            expety = tf.reduce_max(tf.concat([diff, ze], axis = 1), axis=1)
+            self.risk = (self.Value_risk + (1/(1-perc))*tf.reduce_mean(expety))[0]
+            #self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, cutoff)[0])
+            #self.check2 = tf.nn.top_k(self.disc_sum_rew, cutoff)[0]
             #self.risk = -1*tf.reduce_min(self.disc_sum_rew)
 
     def _kl_entropy(self):
@@ -215,12 +221,12 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric, check2 = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.check2], feed_dict)
+            loss, kl, entropy, risk_metric, VaR_param = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
         print('risk metric is', risk_metric)
-        print('top k values', check2)
+        print('VaR param is', VaR_param)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
