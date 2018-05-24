@@ -92,7 +92,7 @@ class Policy(object):
         self.means = tf.layers.dense(out, self.act_dim,
                                      kernel_initializer=tf.random_normal_initializer(
                                          stddev=np.sqrt(1 / hid3_size)), name="means")
-        self.Value_risk = tf.Variable(tf.random_normal([1],300,50), dtype=tf.float32, name= 'VaR') 
+        #self.Value_risk = tf.Variable(tf.random_normal([1],300,50), dtype=tf.float32, name= 'VaR') 
         # logvar_speed is used to 'fool' gradient descent into making faster updates
         # to log-variances. heuristic sets logvar_speed based on network size.
         logvar_speed = (10 * hid3_size) // 48
@@ -178,9 +178,9 @@ class Policy(object):
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
-        self.loss = loss1 + loss2 + loss3 + loss4
+        self.loss = loss1 + loss2 + loss3# + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
-        self.gradients = optimizer.compute_gradients(self.loss)
+        self.gradients = tf.reduce_mean(optimizer.compute_gradients(self.loss))
         self.train_op = optimizer.minimize(self.loss)
 
     def _init_session(self):
@@ -222,13 +222,14 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric, VaR_param, grad_VaR = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk, self.gradients], feed_dict)
+            loss, kl, entropy, grads_mean = self.sess.run([self.loss, self.kl, self.entropy, self.gradients], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
-        print('risk metric is', risk_metric)
-        print('VaR param is', VaR_param)
+        #print('risk metric is', risk_metric)
+        #print('VaR param is', VaR_param)
         print('VaR gradient', grad_VaR)
+        print('loss is', loss)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
