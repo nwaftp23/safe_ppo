@@ -222,13 +222,13 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, grads_mean = self.sess.run([self.loss, self.kl, self.entropy, self.gradients], feed_dict)
+            loss, kl, entropy, grads = self.sess.run([self.loss, self.kl, self.entropy, self.gradients], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
         #print('risk metric is', risk_metric)
         #print('VaR param is', VaR_param)
-        print('VaR gradient', grad_VaR)
+        print('gradients', grads)
         print('loss is', loss)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
