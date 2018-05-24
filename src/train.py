@@ -472,7 +472,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         #predicted_values_0 = [t['values'][0] for t in trajectories]
         add_disc_sum_rew(trajectories, gamma, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
-        nodisc0 = -1*np.array([t['rewards'].sum() for t in trajectories])
+        nodisc0 = -0.0001*np.array([t['rewards'].sum() for t in trajectories])
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
         #### WINDOW ####
         #rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
@@ -551,7 +551,7 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default=0.003)
     parser.add_argument('-r', '--risk_targ', type=float, help='Risk target value or Constraint',
-                        default = 400)
+                        default = 0.04)
     parser.add_argument('-b', '--batch_size', type=int,
                         help='Number of episodes per training batch',
                         default=20)
