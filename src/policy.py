@@ -92,7 +92,7 @@ class Policy(object):
         self.means = tf.layers.dense(out, self.act_dim,
                                      kernel_initializer=tf.random_normal_initializer(
                                          stddev=np.sqrt(1 / hid3_size)), name="means")
-        self.Value_risk = tf.Variable(tf.random_normal([1],0,.1), dtype=tf.float32, name= 'VaR')
+        self.Value_risk = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'VaR')
         # logvar_speed is used to 'fool' gradient descent into making faster updates
         # to log-variances. heuristic sets logvar_speed based on network size.
         logvar_speed = (10 * hid3_size) // 48
