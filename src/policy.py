@@ -180,7 +180,7 @@ class Policy(object):
         # which was stupid, but could work better if leverage machinery
         self.loss = loss1 + loss2 + loss3# + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
-        self.gradients = tf.reduce_mean(optimizer.compute_gradients(self.loss))
+        self.gradients = optimizer.compute_gradients(self.loss)
         self.train_op = optimizer.minimize(self.loss)
 
     def _init_session(self):
