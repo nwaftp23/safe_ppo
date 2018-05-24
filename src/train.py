@@ -474,6 +474,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         add_gae(trajectories, gamma, lam, scaler.mean_rew, np.sqrt(scaler.var_rew))  # calculate advantage
         nodisc0 = -0.0001*np.array([t['rewards'].sum() for t in trajectories])
         disc0 = [t['disc_sum_rew'][0] for t in trajectories]
+        print('scaled sum rewards', nodisc0)
         #### WINDOW ####
         #rew_nodisc0 = [np.sum(t['rewards']) for t in trajectories]
         #big_li_rew_nodisc0= np.append(big_li_rew_nodisc0,rew_nodisc0)

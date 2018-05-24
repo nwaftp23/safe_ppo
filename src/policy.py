@@ -180,7 +180,7 @@ class Policy(object):
         # which was stupid, but could work better if leverage machinery
         self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
-        self.gradients = optimizer.compute_gradients(self.loss)
+        #self.gradients = optimizer.compute_gradients(self.loss)
         self.train_op = optimizer.minimize(self.loss)
 
     def _init_session(self):
@@ -222,13 +222,12 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric, VaR_param, grads  = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk, self.gradients], feed_dict)
+            loss, kl, entropy, risk_metric, VaR_param  = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
         print('risk metric is', risk_metric)
         print('VaR param is', VaR_param)
-        print('gradients', grads)
         print('loss is', loss)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
