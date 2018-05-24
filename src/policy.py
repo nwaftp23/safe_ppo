@@ -222,7 +222,7 @@ class Policy(object):
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy, risk_metric, VaR_param, grads  = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk self.gradients], feed_dict)
+            loss, kl, entropy, risk_metric, VaR_param, grads  = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk, self.gradients], feed_dict)
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
@@ -260,7 +260,7 @@ class Policy(object):
         logger.log({'PolicyLoss': loss,
                     'PolicyEntropy': entropy,
                     'KL': kl,
-                    #self.risk_option: risk_metric,
+                    self.risk_option: risk_metric,
                     'Beta': self.beta,
                     'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
