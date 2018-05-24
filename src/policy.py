@@ -264,7 +264,7 @@ class Policy(object):
                     'Beta': self.beta,
                     'lambda': self.lamb,
                     '_lr_multiplier': self.lr_multiplier})
-        return self.lamb, risk_metric
+        return self.lamb
 
     def close_sess(self):
         """ Close TensorFlow session """

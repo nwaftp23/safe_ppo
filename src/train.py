@@ -481,8 +481,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode)
-        lamb, risky = policy.update(observes, actions, advantages, nodisc0, logger)  # update policy
-        print('Risk Lagrange multiplier is', lamb, 'and risk metric is', risky)
+        lamb = policy.update(observes, actions, advantages, nodisc0, logger)  # update policy
         val_func.fit(observes, disc_sum_rew, logger)  # update value function
         logger.write(display=True)  # write logger results to file and stdout
         kl_terms = np.append(kl_terms,policy.check_kl)
