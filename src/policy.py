@@ -44,7 +44,7 @@ class Policy(object):
             self._policy_nn()
             self._logprob()
             self._kl_entropy()
-            self._risk_metric()
+            #self._risk_metric()
             self._sample()
             self._loss_train_op()
             self.init = tf.global_variables_initializer()
@@ -174,7 +174,7 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         #loss 4 Risk Metric
-        loss4 = self.lamb_ph*self.risk
+        #loss4 = self.lamb_ph*self.risk
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
