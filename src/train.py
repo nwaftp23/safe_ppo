@@ -492,7 +492,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         plt.xlabel("Episode")
         plt.ylabel("KL Divergence")
         plt.savefig("KL_curve.png")
-        plt.close()
+        plt.close("KL_curve.png")
         beta_terms = np.append(beta_terms,policy.beta)
         x2 = list(range(1,(len(beta_terms)+1)))
         mean_rewards = plt.plot(x2,beta_terms)
@@ -500,7 +500,7 @@ def main(env_name, num_episodes, gamma, lam, kl_targ, batch_size, hid1_mult, pol
         plt.xlabel("Batch")
         plt.ylabel("Beta Lagrange Multiplier")
         plt.savefig("lagrange_beta_curve.png")
-        plt.close()
+        plt.close("lagrange_beta_curve.png")
         if killer.kill_now:
             if input('Terminate training (y/[n])? ') == 'y':
                 break

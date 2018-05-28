@@ -41,10 +41,10 @@ class Policy(object):
         self.g = tf.Graph()
         with self.g.as_default():
             self._placeholders()
+            self._risk_metric()            
             self._policy_nn()
             self._logprob()
             self._kl_entropy()
-            self._risk_metric()
             self._sample()
             self._loss_train_op()
             self.init = tf.global_variables_initializer()
@@ -80,6 +80,7 @@ class Policy(object):
         # heuristic to set learning rate based on NN size (tuned on 'Hopper-v1')
         self.lr = 9e-4 / np.sqrt(hid2_size)  # 9e-4 empirically determined
         # 3 hidden layers with tanh activations
+        self.lagrange = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'Lambda')
         out = tf.layers.dense(self.obs_ph, hid1_size, tf.tanh,
                               kernel_initializer=tf.random_normal_initializer(
                                   stddev=np.sqrt(1 / self.obs_dim)), name="h1")
@@ -91,8 +92,7 @@ class Policy(object):
                                   stddev=np.sqrt(1 / hid2_size)), name="h3")
         self.means = tf.layers.dense(out, self.act_dim,
                                      kernel_initializer=tf.random_normal_initializer(
-                                         stddev=np.sqrt(1 / hid3_size)), name="means")
-        self.Value_risk = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'VaR')
+                                         stddev=np.sqrt(1 / hid3_size)), name="means")+ self.lagrange * self.risk 
         # logvar_speed is used to 'fool' gradient descent into making faster updates
         # to log-variances. heuristic sets logvar_speed based on network size.
         logvar_speed = (10 * hid3_size) // 48
@@ -120,6 +120,7 @@ class Policy(object):
         self.logp_old = logp_old
 
     def _risk_metric(self):
+        self.Value_risk = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'VaR')
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
@@ -174,7 +175,10 @@ class Policy(object):
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
         #loss 4 Risk Metric
-        loss4 = self.lamb_ph*self.risk
+        # adaptive lagrange multiplier
+        # loss4 = self.lamb_ph*self.risk
+        # derivative with respect to lagrange multiplier
+        loss4 = self.lagrange*self.risk
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
@@ -191,7 +195,6 @@ class Policy(object):
     def sample(self, obs):
         """Draw sample from policy distribution"""
         feed_dict = {self.obs_ph: obs}
-
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
     def update(self, observes, actions, advantages, li_rew, logger):
@@ -226,6 +229,8 @@ class Policy(object):
             # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
+        writer = tf.summary.FileWriter( './logs/2/train ')
+        writer.add_graph(self.g)
         print('risk metric is', risk_metric)
         print('VaR param is', VaR_param)
         print('loss is', loss)
@@ -249,19 +254,20 @@ class Policy(object):
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
         big list is in train, though this might mean I punish future good policies for old bad ones'''
-        if risk_metric > self.risk_targ * 1.5:
-            self.lamb *= 2
+        # Comment out if you are going to take the derivative directly
+        #if risk_metric > self.risk_targ * 1.5:
+        #    self.lamb *= 2
         #elif risk_metric > self.risk_targ / 1.5:
             #self.lamb /= 2
         #self.check_kl = kl
 
         self.check_kl = kl
-        logger.log({'PolicyLoss': loss,
+        logger.log({'PolicyLoss': loss[0],
                     'PolicyEntropy': entropy,
                     'KL': kl,
                     self.risk_option: risk_metric,
                     'Beta': self.beta,
-                    'lambda': self.lamb,
+                    #'lambda': self.lagrange,
                     '_lr_multiplier': self.lr_multiplier})
         return self.lamb
 
