@@ -81,7 +81,7 @@ or increase the batch to ensure rare event encounter. Some methods can be
 combined together.'''
 
 
-def run_episode(env, policy, scaler, init_var, gamma, animate = False, alpha, lambda_k):
+def run_episode(env, policy, scaler, VaR, gamma, alpha, lambda_k, animate = False):
     """ Run single episode with option to animate
 
     Args:
@@ -109,7 +109,7 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False, alpha, la
             env.render()
         obs = obs.astype(np.float32).reshape((1, -1))
         if step == 0:
-            augie = init_var
+            augie = VaR
         else:
             augie += (reward/gamma)
         obs = np.append(obs, [[augie ,step]], axis=1)  # add time step feature
@@ -123,7 +123,7 @@ def run_episode(env, policy, scaler, init_var, gamma, animate = False, alpha, la
             reward = np.asscalar(reward)
         rewards.append(reward)
         step += 1e-3  # increment time step feature
-    new_var = minimize_scalar(f, args = (augie, init_var, lambda_k, alpha), bounds=(-2000000,2000000), method = 'bounded')
+    new_VaR = minimize_scalar(f, args = (augie, init_var, lambda_k, alpha), bounds=(-2000000,2000000), method = 'bounded')
     return (np.concatenate(observes), np.concatenate(actions),
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs), new_var.x)
 
