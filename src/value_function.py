@@ -19,7 +19,7 @@ class NNValueFunction(object):
         """
         self.replay_buffer_x = None
         self.replay_buffer_y = None
-        self.obs_dim = obs_dim+1
+        self.obs_dim = obs_dim#+1 for #auggie
         self.hid1_mult = hid1_mult
         self.epochs = 10
         self.lr = None  # learning rate set in _build_graph()

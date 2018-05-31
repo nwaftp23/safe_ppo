@@ -20,13 +20,14 @@ class Policy(object):
         """
         self.beta = 1.0  # dynamically adjusted D_KL loss multiplier
         self.eta = 50  # multiplier for D_KL-kl_targ hinge-squared loss
-        self.lamb = 1.0 # multiplier for risk penalty
+        self.lamb = 0.01 # multiplier for risk penalty
         self.alpha = alpha # size of tail
         self.kl_targ = kl_targ
         self.risk_targ = risk_targ
         self.risk_option = risk_option
         self.hid1_mult = hid1_mult
         self.policy_logvar = policy_logvar
+        self.batch_size = batch_size
         self.epochs = 20
         self.lr = None
         self.lr_multiplier = 1.0  # dynamically adjust lr when D_KL out of control
@@ -40,10 +41,10 @@ class Policy(object):
         self.g = tf.Graph()
         with self.g.as_default():
             self._placeholders()
+            self._risk_metric()            
             self._policy_nn()
             self._logprob()
             self._kl_entropy()
-            self._risk_metric()
             self._sample()
             self._loss_train_op()
             self.init = tf.global_variables_initializer()
@@ -51,10 +52,10 @@ class Policy(object):
     def _placeholders(self):
         """ Input placeholders"""
         # observations, actions and advantages:
-        self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim+1)), 'obs')
+        self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim)), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
-        self.disc_sum_rew = tf.placeholder(tf.float32, (None,), 'discounted_sum_rewards')
+        self.disc_sum_rew = tf.placeholder(tf.float32, shape=None, name='discounted_sum_rewards')
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
@@ -79,6 +80,7 @@ class Policy(object):
         # heuristic to set learning rate based on NN size (tuned on 'Hopper-v1')
         self.lr = 9e-4 / np.sqrt(hid2_size)  # 9e-4 empirically determined
         # 3 hidden layers with tanh activations
+        self.lagrange = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'Lambda')
         out = tf.layers.dense(self.obs_ph, hid1_size, tf.tanh,
                               kernel_initializer=tf.random_normal_initializer(
                                   stddev=np.sqrt(1 / self.obs_dim)), name="h1")
@@ -90,14 +92,13 @@ class Policy(object):
                                   stddev=np.sqrt(1 / hid2_size)), name="h3")
         self.means = tf.layers.dense(out, self.act_dim,
                                      kernel_initializer=tf.random_normal_initializer(
-                                         stddev=np.sqrt(1 / hid3_size)), name="means")
+                                         stddev=np.sqrt(1 / hid3_size)), name="means")+ self.lagrange * self.risk 
         # logvar_speed is used to 'fool' gradient descent into making faster updates
         # to log-variances. heuristic sets logvar_speed based on network size.
         logvar_speed = (10 * hid3_size) // 48
         log_vars = tf.get_variable('logvars', (logvar_speed, self.act_dim), tf.float32,
                                    tf.constant_initializer(0.0))
         self.log_vars = tf.reduce_sum(log_vars, axis=0) + self.policy_logvar
-        print(self.log_vars)
 
         print('Policy Params -- h1: {}, h2: {}, h3: {}, lr: {:.3g}, logvar_speed: {}'
               .format(hid1_size, hid2_size, hid3_size, self.lr, logvar_speed))
@@ -119,12 +120,19 @@ class Policy(object):
         self.logp_old = logp_old
 
     def _risk_metric(self):
+        self.Value_risk = tf.Variable(tf.random_normal([1],0,.001), dtype=tf.float32, name= 'VaR')
         if self.risk_option == 'VaR':
             self.risk = tf.contrib.distributions.percentile(self.disc_sum_rew, self.alpha)
         elif self.risk_option == 'CVaR':
-            cutoff = np.ceil(self.batch_size * (1-self.alpha/100))
-            self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew,cutoff))
-
+            #cutoff = np.ceil(self.batch_size * (self.alpha/100))
+            perc = 1 - self.alpha/100 # Defined alpha wrong I had to redefine it, alpha not tail but everything before it
+            diff = tf.reshape((self.disc_sum_rew-self.Value_risk),[self.batch_size, 1])
+            ze = np.zeros((self.batch_size,1))
+            expety = tf.reduce_max(tf.concat([diff, ze], axis = 1), axis=1)
+            self.risk = (self.Value_risk + (1/(1-perc))*tf.reduce_mean(expety))[0]
+            #self.risk = tf.reduce_mean(tf.nn.top_k(self.disc_sum_rew, cutoff)[0])
+            #self.check2 = tf.nn.top_k(self.disc_sum_rew, cutoff)[0]
+            #self.risk = -1*tf.reduce_min(self.disc_sum_rew)
 
     def _kl_entropy(self):
         """
@@ -158,6 +166,7 @@ class Policy(object):
             1) standard policy gradient
             2) D_KL(pi_old || pi_new)
             3) Hinge loss on [D_KL - kl_targ]^2
+            4) risk metric
 
         See: https://arxiv.org/pdf/1707.02286.pdf
         """
@@ -165,13 +174,17 @@ class Policy(object):
                                 tf.exp(self.logp - self.logp_old))
         loss2 = tf.reduce_mean(self.beta_ph * self.kl)
         loss3 = self.eta_ph * tf.square(tf.maximum(0.0, self.kl - 2.0 * self.kl_targ))
-        # loss 4 Risk Metric
-        #loss4 = self.lamb_ph*self.risk
+        #loss 4 Risk Metric
+        # adaptive lagrange multiplier
+        # loss4 = self.lamb_ph*self.risk
+        # derivative with respect to lagrange multiplier
+        loss4 = self.lagrange*self.risk
         #print('risk metric loss', loss4)
         # for augie just use augmented MDP instead of estimate of risk metric
         # which was stupid, but could work better if leverage machinery
-        self.loss = loss1 + loss2 + loss3 #+ loss4
+        self.loss = loss1 + loss2 + loss3 + loss4
         optimizer = tf.train.AdamOptimizer(self.lr_ph)
+        #self.gradients = optimizer.compute_gradients(self.loss)
         self.train_op = optimizer.minimize(self.loss)
 
     def _init_session(self):
@@ -182,7 +195,6 @@ class Policy(object):
     def sample(self, obs):
         """Draw sample from policy distribution"""
         feed_dict = {self.obs_ph: obs}
-
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
     def update(self, observes, actions, advantages, li_rew, logger):
@@ -207,14 +219,21 @@ class Policy(object):
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
         feed_dict[self.old_means_ph] = old_means_np
         loss, kl, entropy = 0, 0, 0
+        #writer = tf.summary.FileWriter('1')
+        #writer.add_graph(sess.graph)
+        #input('pause to check tensorlfow graph')
         for e in range(self.epochs):
             # TODO: need to improve data pipeline - re-feeding data every epoch
             self.sess.run(self.train_op, feed_dict)
-            # loss, kl, entropy, risk_metric = self.sess.run([self.loss, self.kl, self.entropy, self.risk], feed_dict)
-            loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
+            loss, kl, entropy, risk_metric, VaR_param  = self.sess.run([self.loss, self.kl, self.entropy, self.risk, self.Value_risk], feed_dict)
+            # loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
-
+        writer = tf.summary.FileWriter( './logs/2/train ')
+        writer.add_graph(self.g)
+        print('risk metric is', risk_metric)
+        print('VaR param is', VaR_param)
+        print('loss is', loss)
         # TODO: too many "magic numbers" in next 8 lines of code, need to clean up
         #print('risk_metric is', risk_metric)
         if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
@@ -235,20 +254,22 @@ class Policy(object):
 
         '''Another idea keep vector of all past values and then take the risk metric with respect to that
         big list is in train, though this might mean I punish future good policies for old bad ones'''
-        #if risk_metric < self.risk_targ * 1.5:
+        # Comment out if you are going to take the derivative directly
+        #if risk_metric > self.risk_targ * 1.5:
         #    self.lamb *= 2
         #elif risk_metric > self.risk_targ / 1.5:
-        #    self.lamb /= 2
+            #self.lamb /= 2
         #self.check_kl = kl
 
         self.check_kl = kl
-        logger.log({'PolicyLoss': loss,
+        logger.log({'PolicyLoss': loss[0],
                     'PolicyEntropy': entropy,
                     'KL': kl,
-                    #self.risk_option: risk_metric,
+                    self.risk_option: risk_metric,
                     'Beta': self.beta,
-                    'lambda': self.lamb,
+                    #'lambda': self.lagrange,
                     '_lr_multiplier': self.lr_multiplier})
+        return self.lamb
 
     def close_sess(self):
         """ Close TensorFlow session """

@@ -22,8 +22,8 @@ class Scaler(object):
         Args:
             obs_dim: dimension of axis=1
         """
-        self.varss = np.zeros(obs_dim+1) # added plus 1 for augmented state space
-        self.means = np.zeros(obs_dim+1) # added plus 1 for augmented state space
+        self.varss = np.zeros(obs_dim)#+1) # added plus 1 for augmented state space
+        self.means = np.zeros(obs_dim)#+1) # added plus 1 for augmented state space
         self.mean_rew = 0
         self.var_rew = 0
         self.n = 0
@@ -52,7 +52,6 @@ class Scaler(object):
             self.varss = (((self.n * (self.varss + np.square(self.means))) +
                           (m * (new_data_var + np.square(new_data_mean)))) / (self.n + m) -
                          np.square(new_means))
-            print('Is variance less than 0', self.varss < 0)
             self.means = new_means
             self.n += m
             new_data_var_rew = np.var(r, axis=0)
@@ -61,8 +60,7 @@ class Scaler(object):
             self.var_rew = (((self.n * (self.var_rew + np.square(self.mean_rew))) +
                           (m * (new_data_var_rew + np.square(new_data_mean_rew)))) / (self.n + m) -
                          np.square(new_means_rew))
-            print('Is variance less than 0', self.var_rew < 0)
-
+           
 
 
     def get(self):
