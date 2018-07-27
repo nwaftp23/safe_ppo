@@ -42,7 +42,7 @@ class Policy(object):
         with self.g.as_default():
             self._placeholders()
             self._policy_nn()
-            self._risk_metric()
+            #self._risk_metric()
             self._logprob()
             self._kl_entropy()
             self._sample()
@@ -60,7 +60,7 @@ class Policy(object):
         self.obs_ph = tf.placeholder(tf.float32, (None, (self.obs_dim)), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
-        self.disc_sum_rew = tf.placeholder(tf.float32, (self.batch_size,), 'discounted_sum_rewards')
+        #self.disc_sum_rew = tf.placeholder(tf.float32, shape = (self.batch_size,1), name = 'discounted_sum_rewards')
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
@@ -134,6 +134,7 @@ class Policy(object):
             ze = np.zeros((self.batch_size,1))
             expety = tf.reduce_max(tf.concat([diff, ze], axis = 1), axis=1)
             self.risk = (self.Value_risk + (1/(1-perc))*tf.reduce_mean(expety))[0]
+            self.means += self.lagrange * self.risk
 
 
     def _kl_entropy(self):
@@ -196,7 +197,7 @@ class Policy(object):
         feed_dict = {self.obs_ph: obs}
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
-    def update(self, observes, actions, advantages, li_rew, logger):
+    def update(self, observes, actions, advantages, logger):#li_rew, logger):
         """ Update policy based on observations, actions and advantages
 
         Args:
@@ -212,7 +213,7 @@ class Policy(object):
                      self.eta_ph: self.eta,
                      self.lamb_ph: self.lamb,
                      self.lr_ph: self.lr * self.lr_multiplier,
-                     self.disc_sum_rew: li_rew}
+                     }#self.disc_sum_rew: li_rew}
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
